@@ -31,6 +31,15 @@
 #include <stdint.h>
 #endif
 
+#ifdef PSP
+
+// A buffer for MUS.MKF was defined in global.c, since FOPEN_MAX of PSP is limited
+extern FILE* musfile;
+extern char* mus_buf;
+extern long mus_numbytes;
+
+#endif
+
 class CrixPlayer: public CPlayer
 {
  public:
