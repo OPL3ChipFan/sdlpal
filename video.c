@@ -22,6 +22,11 @@
 #include <float.h>
 #include "main.h"
 
+#ifdef PSP
+// For "struct timeval tv" of VIDEO_SaveScreenshot
+# include <pspkernel.h>
+#endif
+
 // Screen buffer
 SDL_Surface              *gpScreen           = NULL;
 
