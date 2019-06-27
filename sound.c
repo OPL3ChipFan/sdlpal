@@ -766,18 +766,53 @@ SOUND_Play(
 		return FALSE;
 	}
 
+#ifdef PSP
+	// Only open the sound file when needed, since FOPEN_MAX of PSP is limited
+	char* mkfs[2];
+	int j;
+
+	if (gConfig.fIsWIN95) {
+		mkfs[0] = "sounds.mkf";
+		mkfs[1] = "voc.mkf";
+	}
+	else {
+		mkfs[0] = "voc.mkf";
+		mkfs[1] = "sounds.mkf";
+	}
+
+	for (j = 0; j < 2; j++) {
+		FILE* mkf = UTIL_OpenFile(mkfs[j]);
+		if (mkf) {
+			player->mkf = mkf;
+			break;
+		}
+	}
+#endif
+
 	//
 	// Get the length of the sound file.
 	//
 	len = PAL_MKFGetChunkSize(iSoundNum, player->mkf);
 	if (len <= 0)
 	{
+#ifdef PSP
+		// Only open the sound file when needed, since FOPEN_MAX of PSP is limited
+		if (player->mkf) {
+			fclose(player->mkf);
+		}
+#endif
 		return FALSE;
 	}
 
 	buf = malloc(len);
 	if (buf == NULL)
 	{
+#ifdef PSP
+		// Only open the sound file when needed, since FOPEN_MAX of PSP is limited
+		if (player->mkf) {
+			fclose(player->mkf);
+		}
+#endif
 		return FALSE;
 	}
 
@@ -790,6 +825,12 @@ SOUND_Play(
 	if (snddata == NULL)
 	{
 		free(buf);
+#ifdef PSP
+		// Only open the sound file when needed, since FOPEN_MAX of PSP is limited
+		if (player->mkf) {
+			fclose(player->mkf);
+		}
+#endif
 		return FALSE;
 	}
 
@@ -803,9 +844,22 @@ SOUND_Play(
 		mixer = (wavespec.format == AUDIO_S16) ? SOUND_ResampleMix_S16_Stereo_Stereo : SOUND_ResampleMix_U8_Stereo_Stereo;
 	else
 	{
+#ifdef PSP
+		// Only open the sound file when needed, since FOPEN_MAX of PSP is limited
+		if (player->mkf) {
+			fclose(player->mkf);
+		}
+#endif
 		free(buf);
 		return FALSE;
 	}
+
+#ifdef PSP
+	// Only open the sound file when needed, since FOPEN_MAX of PSP is limited
+	if (player->mkf) {
+		fclose(player->mkf);
+	}
+#endif
 
 	AUDIO_Lock();
 
@@ -980,6 +1034,10 @@ SOUND_Init(
 			player->soundlist.resampler[0] = resampler_create();
 			player->soundlist.resampler[1] = resampler_create();
 			player->cursounds = 0;
+#ifdef PSP
+			// Only open the sound file when needed, since FOPEN_MAX of PSP is limited
+			fclose(mkf);
+#endif
 			return (LPAUDIOPLAYER)player;
 		}
 	}
