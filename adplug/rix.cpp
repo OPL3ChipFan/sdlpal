@@ -120,7 +120,6 @@ void CrixPlayer::set_extra_init(uint32_t* regs, uint8_t* datas, int n)
 bool CrixPlayer::load(const std::string &filename, const CFileProvider &cfp)
 {
   fp = fopen(filename.c_str(),"rb"); if(!fp) return false;
-
   if(SDL_strcasecmp(filename.substr(filename.length()-4,4).c_str(),".mkf")==0)
   {
 	  flag_mkf=1;
@@ -147,6 +146,12 @@ bool CrixPlayer::load(const std::string &filename, const CFileProvider &cfp)
         subsongs = RIX_SWAP32(subsongs);
         subsongs/=4;
     }
+
+#ifdef PSP
+	// In the PSP version, MUS.MKF was loaded to mus_buf, so the file should be closed here. 
+	fclose(fp);
+#endif
+
   rewind(0);
   return true;
 }
@@ -194,6 +199,7 @@ void CrixPlayer::rewindReInit(int subsong, bool reinit)
 	if (flag_mkf)
 	{
         int index,index2;
+#ifndef PSP
         fseek(fp,subsong*4,SEEK_SET);
         fread(&index,4,1,fp);
         fread(&index2,4,1,fp);
@@ -203,6 +209,17 @@ void CrixPlayer::rewindReInit(int subsong, bool reinit)
         fseek(fp,index,SEEK_SET);
         memset(rix_buf, 0, sizeof(rix_buf));
         fread(rix_buf,length,1,fp);
+#else
+		// Load RIX from mus_buf
+		char* p = &mus_buf[0];
+		memcpy(&index, (p + subsong * 4), 4);
+		memcpy(&index2, (p + (subsong + 1) * 4), 4);
+		index = RIX_SWAP32(index);
+		index2 = RIX_SWAP32(index2);
+		length = index2 - index;
+		memset(rix_buf, 0, sizeof(rix_buf));
+		memcpy(&rix_buf, (p + index), length);
+#endif
 	}
 
 	if (reinit)

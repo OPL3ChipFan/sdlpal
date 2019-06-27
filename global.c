@@ -29,6 +29,15 @@ GLOBALVARS * const  gpGlobals = &_gGlobals;
 
 CONFIGURATION gConfig;
 
+#ifdef PSP
+
+// Define a buffer for MUS.MKF since FOPEN_MAX of PSP is limited
+FILE* musfile;
+char* mus_buf;
+long mus_numbytes;
+
+#endif
+
 #if SDL_BYTEORDER == SDL_LIL_ENDIAN
 #define DO_BYTESWAP(buf, size)
 #else
@@ -182,6 +191,23 @@ PAL_InitGlobals(
    gpGlobals->f.fpRGM = UTIL_OpenRequiredFile("rgm.mkf");
    gpGlobals->f.fpSSS = UTIL_OpenRequiredFile("sss.mkf");
 
+#ifdef PSP
+
+   // Read MUS.MKF to mus_buf
+   if (UTIL_GetFullPathName(PAL_BUFFER_SIZE_ARGS(0), gConfig.pszGamePath, "mus.mkf")) {
+	   musfile = UTIL_OpenFileForMode("mus.mkf", "rb");
+	   fseek(musfile, 0L, SEEK_END);
+	   mus_numbytes = ftell(musfile);
+	   fseek(musfile, 0L, SEEK_SET);
+
+	   mus_buf = (char*)calloc(mus_numbytes, sizeof(char));
+	   memset(mus_buf, 0, sizeof(char));
+	   fread(mus_buf, sizeof(char), mus_numbytes, musfile);
+	   fclose(musfile);
+   }
+
+#endif
+
    //
    // Retrieve game resource version
    //
@@ -250,6 +276,15 @@ PAL_FreeGlobals(
    free(gpGlobals->g.lprgMagic);
    free(gpGlobals->g.lprgBattleField);
    free(gpGlobals->g.lprgLevelUpMagic);
+
+#ifdef PSP
+
+   // free mus_buf
+   if (UTIL_GetFullPathName(PAL_BUFFER_SIZE_ARGS(0), gConfig.pszGamePath, "mus.mkf")) {
+	   free(mus_buf);
+   }
+
+#endif
 
    //
    // Free the object description data
