@@ -179,6 +179,11 @@ PAL_FadeOut(
 
       VIDEO_SetPalette(newpalette);
 
+#ifdef PSP
+	  // VIDEO_UpdateScreen(NULL) is needed here in the PSP version. 
+	  VIDEO_UpdateScreen(NULL);
+#endif
+
       UTIL_Delay(10);
    }
 
@@ -246,6 +251,11 @@ PAL_FadeIn(
       }
 
       VIDEO_SetPalette(newpalette);
+
+#ifdef PSP
+	  // VIDEO_UpdateScreen(NULL) is needed here in the PSP version. 
+	  VIDEO_UpdateScreen(NULL);
+#endif
 
       UTIL_Delay(10);
    }
@@ -649,6 +659,12 @@ PAL_FadeToRed(
       }
 
       VIDEO_SetPalette(newpalette);
+
+#ifdef PSP
+	  // VIDEO_UpdateScreen(NULL) is needed here in the PSP version. 
+	  VIDEO_UpdateScreen(NULL);
+#endif
+
       UTIL_Delay(75);
    }
 }
