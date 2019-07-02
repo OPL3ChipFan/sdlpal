@@ -407,6 +407,12 @@ PAL_SplashScreen(
                VIDEO_SetPalette(rgCurrentPalette);
                VIDEO_UpdateSurfacePalette(lpBitmapDown);
                VIDEO_UpdateSurfacePalette(lpBitmapUp);
+
+#ifdef PSP
+			   // VIDEO_UpdateScreen(NULL) is needed here in the PSP version. 
+			   VIDEO_UpdateScreen(NULL);
+#endif
+
                UTIL_Delay(8);
                dwTime += 250;
             }
