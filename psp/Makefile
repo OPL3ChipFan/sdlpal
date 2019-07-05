@@ -10,7 +10,7 @@ PSPSDK = $(shell psp-config --pspsdk-path)
 
 INCDIR = 
 CFLAGS = -O3 -G0 -Wall -g -I/usr/local/pspdev/psp/include/SDL -DPSP=1 -std=gnu99 -D_GNU_SOURCE
-CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti -std=c++11 -I../
+CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti -std=c++11 -I. -I../
 ASFLAGS = $(CFLAGS)
 
 LIBDIR =
@@ -20,7 +20,7 @@ LIBS = -L/usr/local/pspdev/psp/lib -lSDL -lm -lGL -lpspvfpu -L/usr/local/pspdev/
  -lstdc++
 
 EXTRA_TARGETS = EBOOT.PBP
-PSP_EBOOT_TITLE = sdlpal
+PSP_EBOOT_TITLE = SDLPal
 #PSP_EBOOT_ICON = icon0.png
 #PSP_EBOOT_PIC1 = PIC1.png
 
