@@ -40,6 +40,33 @@ UTIL_IsAbsolutePath(
 	return FALSE;
 }
 
+int PSP_resume_callback(int unknown, int pwrflags, void* common)
+{
+	if (pwrflags & PSP_POWER_CB_RESUME_COMPLETE)
+	{
+		// On certian PSP-1000 system, file handles will be invalid after PSP_POWER_CB_RESUME_COMPLETE 
+		fclose(gpGlobals->f.fpFBP);
+		gpGlobals->f.fpFBP = UTIL_OpenRequiredFile("fbp.mkf");
+		fclose(gpGlobals->f.fpMGO);
+		gpGlobals->f.fpMGO = UTIL_OpenRequiredFile("mgo.mkf");
+		fclose(gpGlobals->f.fpBALL);
+		gpGlobals->f.fpBALL = UTIL_OpenRequiredFile("ball.mkf");
+		fclose(gpGlobals->f.fpDATA);
+		gpGlobals->f.fpDATA = UTIL_OpenRequiredFile("data.mkf");
+		fclose(gpGlobals->f.fpF);
+		gpGlobals->f.fpF = UTIL_OpenRequiredFile("f.mkf");
+		fclose(gpGlobals->f.fpFIRE);
+		gpGlobals->f.fpFIRE = UTIL_OpenRequiredFile("fire.mkf");
+		fclose(gpGlobals->f.fpRGM);
+		gpGlobals->f.fpRGM = UTIL_OpenRequiredFile("rgm.mkf");
+		fclose(gpGlobals->f.fpSSS);
+		gpGlobals->f.fpSSS = UTIL_OpenRequiredFile("sss.mkf");
+	}
+	int cbid;
+	cbid = sceKernelCreateCallback("Power Callback", PSP_resume_callback, NULL);
+	scePowerRegisterCallback(0, cbid);
+	return 0;
+}
 
 int PSP_exit_callback(int arg1, int arg2, void* common)
 {
@@ -47,23 +74,27 @@ int PSP_exit_callback(int arg1, int arg2, void* common)
 	return 0;
 }
 
-int PSP_exit_callback_thread(SceSize args, void* argp)
+int PSP_callback_thread(SceSize args, void* argp)
 {
 	int cbid;
 	cbid = sceKernelCreateCallback("Exit Callback", PSP_exit_callback, NULL);
 	sceKernelRegisterExitCallback(cbid);
 	sceKernelSleepThreadCB();
+	cbid = sceKernelCreateCallback("Power Callback", PSP_resume_callback, NULL);
+	scePowerRegisterCallback(0, cbid);
 	return 0;
 }
 
-int PSP_exit_setup_callbacks(void)
+
+int PSP_setup_callbacks(void)
 {
 	int thid = 0;
-	thid = sceKernelCreateThread("update_thread", PSP_exit_callback_thread, 0x11, 0xFA0, 0, 0);
+	thid = sceKernelCreateThread("update_thread", PSP_callback_thread, 0x11, 0xFA0, 0, 0);
 	if (thid >= 0)
 		sceKernelStartThread(thid, 0, 0);
 	return thid;
 }
+
 
 void PAL_calc_Axes(
 	unsigned char x,
@@ -230,9 +261,9 @@ UTIL_Platform_Init(
 
 	PAL_RegisterInputFilter(NULL, input_event_filter, NULL);
 
-	PSP_exit_setup_callbacks();
+	PSP_setup_callbacks();
 	//
-	// Register sceKernelExitGame() to be called when we exit 
+	// Register callbacks 
 	//
 	atexit(sceKernelExitGame);
 	//
