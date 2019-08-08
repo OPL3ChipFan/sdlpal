@@ -157,6 +157,12 @@ PAL_FadeOut(
    //
    // Start fading out...
    //
+
+#ifdef PSP
+//Switch to high performance mode for battle
+   PSP_switch_frequency(1);
+#endif // PSP
+
    time = SDL_GetTicks() + iDelay * 10 * 60;
 
    while (TRUE)
@@ -189,6 +195,12 @@ PAL_FadeOut(
 
    memset(newpalette, 0, sizeof(newpalette));
    VIDEO_SetPalette(newpalette);
+
+#ifdef PSP
+   //Switch back to power saving mode
+   PSP_switch_frequency(0);
+#endif
+
 }
 
 VOID
@@ -229,6 +241,12 @@ PAL_FadeIn(
    //
    // Start fading in...
    //
+
+#ifdef PSP
+   //Switch to high performance mode for battle
+   PSP_switch_frequency(1);
+#endif // PSP
+
    time = SDL_GetTicks() + iDelay * 10 * 60;
    while (TRUE)
    {
@@ -261,6 +279,12 @@ PAL_FadeIn(
    }
 
    VIDEO_SetPalette(palette);
+
+#ifdef PSP
+   //Switch back to power saving mode
+   PSP_switch_frequency(0);
+#endif
+
 }
 
 VOID
@@ -291,6 +315,11 @@ PAL_SceneFade(
    SDL_Color            *palette, newpalette[256];
    int                   i, j;
    DWORD                 time;
+
+#ifdef PSP
+   //Switch to high performance mode for battle
+   PSP_switch_frequency(1);
+#endif // PSP
 
    palette = PAL_GetPalette(iPaletteNum, fNight);
 
@@ -378,6 +407,12 @@ PAL_SceneFade(
          }
       }
    }
+
+#ifdef PSP
+   //Switch back to power saving mode
+   PSP_switch_frequency(0);
+#endif
+
 }
 
 VOID
@@ -410,6 +445,11 @@ PAL_PaletteFade(
    SDL_Color     *newpalette = PAL_GetPalette(iPaletteNum, fNight);
    PAL_LARGE SDL_Color      palette[256];
    PAL_LARGE SDL_Color		t[256];
+
+#ifdef PSP
+   //Switch to high performance mode for battle
+   PSP_switch_frequency(1);
+#endif // PSP
 
    if (newpalette == NULL)
    {
@@ -457,6 +497,12 @@ PAL_PaletteFade(
          SDL_Delay(5);
       }
    }
+
+#ifdef PSP
+   //Switch back to power saving mode
+   PSP_switch_frequency(0);
+#endif
+
 }
 
 VOID
@@ -487,6 +533,11 @@ PAL_ColorFade(
    SDL_Color       *palette;
    PAL_LARGE SDL_Color        newpalette[256];
    int              i, j;
+
+#ifdef PSP
+   //Switch to high performance mode for battle
+   PSP_switch_frequency(1);
+#endif // PSP
 
    palette = PAL_GetPalette(gpGlobals->wNumPalette, gpGlobals->fNightPalette);
 
@@ -614,6 +665,11 @@ PAL_FadeToRed(
    int                        i, j;
    BYTE                       color;
 
+#ifdef PSP
+   //Switch to high performance mode for battle
+   PSP_switch_frequency(1);
+#endif // PSP
+
    palette = PAL_GetPalette(gpGlobals->wNumPalette, gpGlobals->fNightPalette);
    memcpy(newpalette, palette, sizeof(newpalette));
 
@@ -667,4 +723,10 @@ PAL_FadeToRed(
 
       UTIL_Delay(75);
    }
+
+#ifdef PSP
+   //Switch back to power saving mode
+   PSP_switch_frequency(0);
+#endif
+
 }

@@ -1153,6 +1153,11 @@ PAL_StartBattle(
    WORD           w, wPrevWaveLevel;
    SHORT          sPrevWaveProgression;
 
+#ifdef PSP
+   //Switch to high performance mode for battle
+   PSP_switch_frequency(1);
+#endif // PSP
+
    //
    // Set the screen waving effects
    //
@@ -1451,6 +1456,11 @@ PAL_StartBattle(
    //
    gpGlobals->sWaveProgression = sPrevWaveProgression;
    gpGlobals->wScreenWave = wPrevWaveLevel;
+
+#ifdef PSP
+   //Switch back to power saving mode
+   PSP_switch_frequency(0);
+#endif
 
    return i;
 }
