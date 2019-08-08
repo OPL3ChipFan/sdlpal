@@ -63,7 +63,7 @@ int PSP_resume_callback(int unknown, int pwrflags, void* common)
 		gpGlobals->f.fpSSS = UTIL_OpenRequiredFile("sss.mkf");
 	}
 	int cbid;
-	cbid = sceKernelCreateCallback("Power Callback", PSP_resume_callback, NULL);
+	cbid = sceKernelCreateCallback("suspend Callback", PSP_resume_callback, NULL);
 	scePowerRegisterCallback(0, cbid);
 	return 0;
 }
@@ -79,9 +79,9 @@ int PSP_callback_thread(SceSize args, void* argp)
 	int cbid;
 	cbid = sceKernelCreateCallback("Exit Callback", PSP_exit_callback, NULL);
 	sceKernelRegisterExitCallback(cbid);
-	sceKernelSleepThreadCB();
-	cbid = sceKernelCreateCallback("Power Callback", PSP_resume_callback, NULL);
+	cbid = sceKernelCreateCallback("suspend Callback", PSP_resume_callback, NULL);
 	scePowerRegisterCallback(0, cbid);
+	sceKernelSleepThreadCB();
 	return 0;
 }
 
