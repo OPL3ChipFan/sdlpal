@@ -23,6 +23,8 @@ static int running = 0;
 static unsigned int old_button = 0;
 static unsigned char old_x = 0, old_y = 0;
 
+int dynamic_freq = 0;
+
 BOOL
 UTIL_GetScreenSize(
 	DWORD *pdwScreenWidth,
@@ -95,6 +97,18 @@ int PSP_setup_callbacks(void)
 	return thid;
 }
 
+int PSP_switch_frequency(int freq)
+{
+	if (dynamic_freq) {
+		if (freq == 1) {
+			scePowerSetClockFrequency(333, 333, 166);
+		}
+		else
+		{
+			scePowerSetClockFrequency(300, 300, 150);
+		}
+	}
+}
 
 void PAL_calc_Axes(
 	unsigned char x,
@@ -221,6 +235,18 @@ static int input_event_filter(const SDL_Event* lpEvent, volatile PALINPUTSTATE* 
 		if (button & PSP_CTRL_CROSS)
 		{
 			g_InputState.dwKeyPress = kKeyMenu;
+			return 1;
+		}
+		if ((button & PSP_CTRL_LTRIGGER) && (button & PSP_CTRL_SELECT))
+		{
+			dynamic_freq = 0;
+			scePowerSetClockFrequency(333, 333, 166);
+			return 1;
+		}
+		if ((button & PSP_CTRL_RTRIGGER) && (button & PSP_CTRL_SELECT))
+		{
+			dynamic_freq = 1;
+			scePowerSetClockFrequency(300, 300, 150);
 			return 1;
 		}
 		if (button & PSP_CTRL_START)

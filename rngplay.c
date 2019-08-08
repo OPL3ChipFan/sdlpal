@@ -402,6 +402,11 @@ PAL_RNGPlay(
    uint8_t        *buf = (uint8_t *)malloc(65000);
    FILE           *fp = UTIL_OpenRequiredFile("rng.mkf");
 
+#ifdef PSP
+   //Switch to high performance mode for battle
+   PSP_switch_frequency(1);
+#endif // PSP
+
    for (double iTime = SDL_GetPerformanceCounter(); rng && buf && iStartFrame != iEndFrame; iStartFrame++)
    {
 	  iTime += iDelay;
@@ -440,4 +445,10 @@ PAL_RNGPlay(
    fclose(fp);
    free(rng);
    free(buf);
+
+#ifdef PSP
+   //Switch back to power saving mode
+   PSP_switch_frequency(0);
+#endif
+
 }
