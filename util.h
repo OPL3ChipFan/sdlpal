@@ -362,6 +362,8 @@ UTIL_LogSetPrelude(
     const char    *prelude
 );
 
+SDL_Surface * UTIL_LoadBMP(LPCSTR file);
+
 PAL_C_LINKAGE_END
 
 #endif

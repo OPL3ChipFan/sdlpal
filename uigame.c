@@ -22,6 +22,8 @@
 
 #include "main.h"
 
+extern MENUITEM gSelectTargetMenuItem[30];
+
 static WORD GetSavedTimes(int iSaveSlot)
 {
 	FILE *fp = UTIL_OpenFileAtPath(gConfig.pszSavePath, PAL_va(0, "%d.rpg", iSaveSlot));
@@ -101,30 +103,35 @@ PAL_OpeningMenu(
    WORD          wDefaultItem     = 0;
    INT           w[2] = { PAL_WordWidth(MAINMENU_LABEL_NEWGAME), PAL_WordWidth(MAINMENU_LABEL_LOADGAME) };
 
-   MENUITEM      rgMainMenuItem[2] = {
+   MENUITEM      rgMainMenuItem[] = {
       // value   label                     enabled   position
-      {  0,      MAINMENU_LABEL_NEWGAME,   TRUE,     PAL_XY(125 - (w[0] > 4 ? (w[0] - 4) * 8 : 0), 95)  },
-      {  1,      MAINMENU_LABEL_LOADGAME,  TRUE,     PAL_XY(125 - (w[1] > 4 ? (w[1] - 4) * 8 : 0), 112) }
+      {  0,      MAINMENU_LABEL_NEWGAME,   TRUE,     PAL_XY(125 - (w[0] > 4 ? (w[0] - 4) * 8 : 0), 95)  ,PAL_XY(16 * 4,16) },
+      {  1,      MAINMENU_LABEL_LOADGAME,  TRUE,     PAL_XY(125 - (w[1] > 4 ? (w[1] - 4) * 8 : 0), 112) ,PAL_XY(16 * 4,16) },
    };
 
    //
    // Play the background music
    //
    AUDIO_PlayMusic(RIX_NUM_OPENINGMENU, TRUE, 1);
-
+reset:
    //
    // Draw the background
    //
    PAL_DrawOpeningMenuBackground();
    PAL_FadeIn(0, FALSE, 1);
 
+   
    while (TRUE)
    {
+	   gUI_Buttom[buttomLOGO].visable = TRUE;
+	   if (gpScreen240) gDraw240 = TRUE;
       //
       // Activate the menu
       //
       wItemSelected = PAL_ReadMenu(NULL, rgMainMenuItem, 2, wDefaultItem, MENUITEM_COLOR);
 
+	  if (wItemSelected == MENUITEM_VALUE_RESET)
+		  goto reset;
       if (wItemSelected == 0 || wItemSelected == MENUITEM_VALUE_CANCELLED)
       {
          //
@@ -135,27 +142,32 @@ PAL_OpeningMenu(
       }
       else
       {
+		  gUI_Buttom[buttomLOGO].visable = FALSE;
          //
          // Load game
          //
+		  if (gpScreen240) gDraw240 = TRUE;
          VIDEO_BackupScreen(gpScreen);
-         wItemSelected = PAL_SaveSlotMenu(1);
+		 wItemSelected = PAL_SaveSlotMenu(1, FALSE);
+		 if (gpScreen240) gDraw240 = TRUE;
          VIDEO_RestoreScreen(gpScreen);
          VIDEO_UpdateScreen(NULL);
          if (wItemSelected != MENUITEM_VALUE_CANCELLED)
          {
             break;
          }
+		 VIDEO_Clean240();
          wDefaultItem = 1;
       }
    }
-
+   gUI_Buttom[buttomLOGO].visable = FALSE;
    //
    // Fade out the screen and the music
    //
    AUDIO_PlayMusic(0, FALSE, 1);
    PAL_FadeOut(1);
-
+   VIDEO_Clean240();
+   gDraw240 = FALSE;
    if (wItemSelected == 0)
    {
       PAL_PlayAVI("3.avi");
@@ -166,7 +178,8 @@ PAL_OpeningMenu(
 
 INT
 PAL_SaveSlotMenu(
-   WORD        wDefaultSlot
+   WORD        wDefaultSlot,
+   BOOL        fIsSave
 )
 /*++
   Purpose:
@@ -183,28 +196,45 @@ PAL_SaveSlotMenu(
 
 --*/
 {
-   LPBOX           rgpBox[5];
-   int             i, w = PAL_WordMaxWidth(LOADMENU_LABEL_SLOT_FIRST, 5);
+   LPBOX           rgpBox[6];
+   int             i, w = PAL_WordMaxWidth(LOADMENU_LABEL_SLOT_FIRST, 6);
    int             dx = (w > 4) ? (w - 4) * 16 : 0;
    WORD            wItemSelected;
 
-   MENUITEM        rgMenuItem[5];
+   MENUITEM        rgMenuItem[6];
 
    const SDL_Rect  rect = { 195 - dx, 7, 120 + dx, 190 };
-
+   const SDL_Rect  rectAuto = { 78, 7 + 38 * 4, 120 + dx, 38 };
+   BOOL buttomstatus = gUI_Buttom[buttomBACK].visable;
+   gUI_Buttom[buttomBACK].visable = TRUE;
+   if (gpScreen240) gDraw240 = TRUE;
    //
    // Create the boxes and create the menu items
    //
+   int slotmax = 5;
+   if (fIsSave == FALSE)
+   {
+	   slotmax = 6;
+	   rgpBox[5] = PAL_CreateSingleLineBox(PAL_XY(78, 7 + 38 * 4), 6 + (w > 4 ? w - 4 : 0), FALSE);
+	   rgMenuItem[5].wValue = 6;
+	   rgMenuItem[5].fEnabled = TRUE;
+	   rgMenuItem[5].wNumWord = LOADMENU_LABEL_SLOT_FIRST + 0x6FFF;
+	   rgMenuItem[5].pos = PAL_XY(78 + 16, 17 + 38 * 4);
+	   rgMenuItem[5].size = PAL_XY(6 * 16, 18);
+   }
+
    for (i = 0; i < 5; i++)
    {
-      // Fix render problem with shadow
-      rgpBox[i] = PAL_CreateSingleLineBox(PAL_XY(195 - dx, 7 + 38 * i), 6 + (w > 4 ? w - 4 : 0), FALSE);
+	   // Fix render problem with shadow
+	   rgpBox[i] = PAL_CreateSingleLineBox(PAL_XY(195 - dx, 7 + 38 * i), 6 + (w > 4 ? w - 4 : 0), FALSE);
 
-      rgMenuItem[i].wValue = i + 1;
-      rgMenuItem[i].fEnabled = TRUE;
-      rgMenuItem[i].wNumWord = LOADMENU_LABEL_SLOT_FIRST + i;
-	  rgMenuItem[i].pos = PAL_XY(210 - dx, 17 + 38 * i);
+	   rgMenuItem[i].wValue = i + 1;
+	   rgMenuItem[i].fEnabled = TRUE;
+	   rgMenuItem[i].wNumWord = LOADMENU_LABEL_SLOT_FIRST + i;
+	   rgMenuItem[i].pos = PAL_XY(210 - dx, 17 + 38 * i);
+	   rgMenuItem[i].size = PAL_XY(6 * 16, 18);
    }
+   
 
    //
    // Draw the numbers of saved times
@@ -219,22 +249,25 @@ PAL_SaveSlotMenu(
    }
 
    VIDEO_UpdateScreen(&rect);
-
+   VIDEO_UpdateScreen(&rectAuto);
+   if (gpScreen240) gDraw240 = TRUE;
    //
    // Activate the menu
    //
-   wItemSelected = PAL_ReadMenu(NULL, rgMenuItem, 5, wDefaultSlot - 1, MENUITEM_COLOR);
+   wItemSelected = PAL_ReadMenu(NULL, rgMenuItem, 6, wDefaultSlot - 1, MENUITEM_COLOR);
 
    //
    // Delete the boxes
    //
-   for (i = 0; i < 5; i++)
+   for (i = 0; i < slotmax; i++)
    {
       PAL_DeleteBox(rgpBox[i]);
    }
 
-   VIDEO_UpdateScreen(&rect);
+   gUI_Buttom[buttomBACK].visable = buttomstatus;
 
+   VIDEO_UpdateScreen(&rect);
+   
    return wItemSelected;
 }
 
@@ -278,7 +311,7 @@ PAL_SelectionMenu(
 	for (i = 0; i < nWords; i++)
 		if (nWords > i && !wItems[i])
 			return MENUITEM_VALUE_CANCELLED;
-
+	if (gpScreen240) gDraw240 = TRUE;
 	//
 	// Create menu items
 	//
@@ -288,8 +321,8 @@ PAL_SelectionMenu(
 		rgMenuItem[i].pos = pos[i];
 		rgMenuItem[i].wValue = i;
 		rgMenuItem[i].wNumWord = wItems[i];
+		rgMenuItem[i].size = PAL_XY(wItems[i], 18);
 	}
-
 	//
 	// Create the boxes
 	//
@@ -300,7 +333,7 @@ PAL_SelectionMenu(
 	}
 
 	VIDEO_UpdateScreen(&rect);
-
+	if (gpScreen240) gDraw240 = TRUE;
 	//
 	// Activate the menu
 	//
@@ -313,7 +346,7 @@ PAL_SelectionMenu(
 	{
 		PAL_DeleteBox(rgpBox[i]);
 	}
-
+	VIDEO_Clean240();
 	VIDEO_UpdateScreen(&rect);
 
 	return wReturnValue;
@@ -543,19 +576,19 @@ PAL_SystemMenu(
    //
    // Create menu items
    //
-   const MENUITEM      rgSystemMenuItem[] =
+   MENUITEM      rgSystemMenuItem[] =
    {
       // value  label                        enabled   pos
-      { 1,      SYSMENU_LABEL_SAVE,          TRUE,     PAL_XY(53, 72) },
-      { 2,      SYSMENU_LABEL_LOAD,          TRUE,     PAL_XY(53, 72 + 18) },
-      { 3,      SYSMENU_LABEL_MUSIC,         TRUE,     PAL_XY(53, 72 + 36) },
-      { 4,      SYSMENU_LABEL_SOUND,         TRUE,     PAL_XY(53, 72 + 54) },
-      { 5,      SYSMENU_LABEL_QUIT,          TRUE,     PAL_XY(53, 72 + 72) },
+      { 1,      SYSMENU_LABEL_SAVE,          TRUE,     PAL_XY(53, 72), PAL_XY(4 * 16, 16) },
+      { 2,      SYSMENU_LABEL_LOAD,          TRUE,     PAL_XY(53, 72 + 18), PAL_XY(4 * 16, 16) },
+      { 3,      SYSMENU_LABEL_MUSIC,         TRUE,     PAL_XY(53, 72 + 36), PAL_XY(4 * 16, 16) },
+      { 4,      SYSMENU_LABEL_SOUND,         TRUE,     PAL_XY(53, 72 + 54), PAL_XY(4 * 16, 16) },
+      { 5,      SYSMENU_LABEL_QUIT,          TRUE,     PAL_XY(53, 72 + 72), PAL_XY(4 * 16, 16) },
 #if !defined(PAL_CLASSIC)
-      { 6,      SYSMENU_LABEL_BATTLEMODE,    TRUE,     PAL_XY(53, 72 + 90) },
+      { 6,      SYSMENU_LABEL_BATTLEMODE,    TRUE,     PAL_XY(53, 72 + 90), PAL_XY(4 * 16, 16) },
 #endif
    };
-   const int           nSystemMenuItem = sizeof(rgSystemMenuItem) / sizeof(MENUITEM);
+   const int           nSystemMenuItem = sizeof(rgSystemMenuItem) / sizeof(MENUITEM) -1;
 
    //
    // Create the menu box.
@@ -584,7 +617,7 @@ PAL_SystemMenu(
       //
       // Save game
       //
-      iSlot = PAL_SaveSlotMenu(gpGlobals->bCurrentSaveSlot);
+      iSlot = PAL_SaveSlotMenu(gpGlobals->bCurrentSaveSlot, TRUE);
 
       if (iSlot != MENUITEM_VALUE_CANCELLED)
       {
@@ -607,7 +640,7 @@ PAL_SystemMenu(
       //
       // Load game
       //
-      iSlot = PAL_SaveSlotMenu(gpGlobals->bCurrentSaveSlot);
+      iSlot = PAL_SaveSlotMenu(gpGlobals->bCurrentSaveSlot, FALSE);
       if (iSlot != MENUITEM_VALUE_CANCELLED)
       {
          AUDIO_PlayMusic(0, FALSE, 1);
@@ -679,7 +712,11 @@ PAL_InGameMagicMenu(
    static WORD      w;
    WORD             wMagic;
    const SDL_Rect   rect = {35, 62, 285, 90};
-
+   gpGlobals->dwUI_Game |= 0x20;
+   if (g_MenuCtrl.MenuItem != gSelectTargetMenuItem)
+   {
+	   memset(gSelectTargetMenuItem, 0, sizeof(MENUITEM) * 30);
+   }
    //
    // Draw the player info boxes
    //
@@ -689,6 +726,11 @@ PAL_InGameMagicMenu(
    {
       PAL_PlayerInfoBox(PAL_XY(y, 165), gpGlobals->rgParty[i].wPlayerRole, 100,
          TIMEMETER_COLOR_DEFAULT, TRUE);
+
+	  gSelectTargetMenuItem[i].fEnabled = TRUE;
+	  gSelectTargetMenuItem[i].pos = PAL_XY(y, 165);
+	  gSelectTargetMenuItem[i].size = PAL_XY(78, 39);
+
       y += 78;
    }
 
@@ -707,10 +749,9 @@ PAL_InGameMagicMenu(
       rgMenuItem[i].fEnabled =
          (gpGlobals->g.PlayerRoles.rgwHP[gpGlobals->rgParty[i].wPlayerRole] > 0);
       rgMenuItem[i].pos = PAL_XY(48, y);
-
+	  rgMenuItem[i].size = PAL_XY(16 * 3, 16);
       y += 18;
    }
-
    //
    // Draw the box
    //
@@ -721,6 +762,7 @@ PAL_InGameMagicMenu(
 
    if (w == MENUITEM_VALUE_CANCELLED)
    {
+	   gpGlobals->dwUI_Game &= (0xffffffff - 0x20);
       return;
    }
 
@@ -762,7 +804,13 @@ PAL_InGameMagicMenu(
          //
          WORD       wPlayer = 0;
          SDL_Rect   rect;
-
+		 
+		 PAL_DrawText(PAL_GetWord(0x6FFF + 1), PAL_XY(120, 144), ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE); //select target
+		 rect.x = 120;
+		 rect.y = 144;
+		 rect.w = 16 * 6;
+		 rect.h = 18;
+		 VIDEO_UpdateScreen(&rect);
          while (wPlayer != MENUITEM_VALUE_CANCELLED)
          {
             //
@@ -790,14 +838,35 @@ PAL_InGameMagicMenu(
 
             VIDEO_UpdateScreen(&rect);
 
+			Setup_MenuCtrl(gSelectTargetMenuItem, gpGlobals->wMaxPartyMemberIndex + 1, wPlayer);
+
             while (TRUE)
             {
                PAL_ClearKeyState();
                PAL_ProcessEvent();
 
+			   if (g_MenuCtrl.Click != 0)
+			   {
+				   INT select = g_MenuCtrl.Select;
+				   wPlayer = select;
+				   if (g_MenuCtrl.Click == 2)
+				   {
+					   if (g_MenuCtrl.LastSelect == select)
+					   {
+						   g_InputState.dwKeyPress |= kKeySearch;
+					   }
+                       else
+                       {
+                           g_MenuCtrl.LastSelect = select;
+                           g_MenuCtrl.Click = 0;
+                           break;
+                       }
+				   }
+			   }
                if (g_InputState.dwKeyPress & kKeyMenu)
                {
                   wPlayer = MENUITEM_VALUE_CANCELLED;
+				  Setup_MenuCtrl(NULL, 0, 0);
                   break;
                }
                else if (g_InputState.dwKeyPress & kKeySearch)
@@ -830,7 +899,7 @@ PAL_InGameMagicMenu(
                         }
                      }
                   }
-
+				  Setup_MenuCtrl(NULL, 0, 0);
                   break;
                }
                else if (g_InputState.dwKeyPress & (kKeyLeft | kKeyUp))
@@ -867,6 +936,7 @@ PAL_InGameMagicMenu(
          y += 78;
       }
    }
+   gpGlobals->dwUI_Game &= (0xffffffff - 0x20);
 }
 
 static VOID
@@ -891,11 +961,11 @@ PAL_InventoryMenu(
    static WORD      w = 0;
    const SDL_Rect   rect = {30, 60, 290, 60};
 
-   MENUITEM        rgMenuItem[2] =
+   MENUITEM        rgMenuItem[] =
    {
       // value  label                     enabled   pos
-      { 1,      INVMENU_LABEL_USE,        TRUE,     PAL_XY(43, 73) },
-      { 2,      INVMENU_LABEL_EQUIP,      TRUE,     PAL_XY(43, 73 + 18) },
+      { 1,      INVMENU_LABEL_USE,        TRUE,     PAL_XY(43, 73), PAL_XY(16 * 2, 16) },
+      { 2,      INVMENU_LABEL_EQUIP,      TRUE,     PAL_XY(43, 73 + 18), PAL_XY(16 * 2, 16) },
    };
 
    PAL_CreateBox(PAL_XY(30, 60), 1, PAL_MenuTextMaxWidth(rgMenuItem, sizeof(rgMenuItem)/sizeof(MENUITEM)) - 1, 0, FALSE);
@@ -960,21 +1030,24 @@ PAL_InGameMenu(
    WORD                 wReturnValue;
    const SDL_Rect       rect = {0, 0, 320, 185};
    
+   gpGlobals->dwUI_Game |= 4;
+
    // Fix render problem with shadow
    VIDEO_BackupScreen(gpScreen);
 
    //
    // Create menu items
    //
-   MENUITEM        rgMainMenuItem[4] =
+   MENUITEM        rgMainMenuItem[] =
    {
-      // value  label                      enabled   pos
-      { 1,      GAMEMENU_LABEL_STATUS,     TRUE,     PAL_XY(16, 50) },
-      { 2,      GAMEMENU_LABEL_MAGIC,      TRUE,     PAL_XY(16, 50 + 18) },
-      { 3,      GAMEMENU_LABEL_INVENTORY,  TRUE,     PAL_XY(16, 50 + 36) },
-      { 4,      GAMEMENU_LABEL_SYSTEM,     TRUE,     PAL_XY(16, 50 + 54) },
+      // value  label                      enabled   pos                  size
+      { 1,      GAMEMENU_LABEL_STATUS,     TRUE,     PAL_XY(16, 50)      ,PAL_XY(32, 16)},
+      { 2,      GAMEMENU_LABEL_MAGIC,      TRUE,     PAL_XY(16, 50 + 18) ,PAL_XY(32, 16)},
+      { 3,      GAMEMENU_LABEL_INVENTORY,  TRUE,     PAL_XY(16, 50 + 36) ,PAL_XY(32, 16)},
+      { 4,      GAMEMENU_LABEL_SYSTEM,     TRUE,     PAL_XY(16, 50 + 54) ,PAL_XY(32, 16)},
    };
-
+   gUI_Buttom[buttomBACK].visable = TRUE;
+   gUI_Buttom[buttomMENU].visable = FALSE;
    //
    // Display the cash amount.
    //
@@ -1042,8 +1115,11 @@ out:
    PAL_DeleteBox(lpCashBox);
    PAL_DeleteBox(lpMenuBox);
 
+   gUI_Buttom[buttomBACK].visable = FALSE;
+   gUI_Buttom[buttomMENU].visable = TRUE;
    // Fix render problem with shadow
    VIDEO_RestoreScreen(gpScreen);
+   gpGlobals->dwUI_Game &= (0xffffffff - 4);
 }
 
 VOID
@@ -1065,6 +1141,7 @@ PAL_PlayerStatus(
 
 --*/
 {
+	gpGlobals->dwUI_Game |= 0x40;
    PAL_LARGE BYTE   bufBackground[320 * 200];
    PAL_LARGE BYTE   bufImage[16384];
    PAL_LARGE BYTE   bufImageBox[50 * 49];
@@ -1282,6 +1359,7 @@ PAL_PlayerStatus(
          }
       }
    }
+   gpGlobals->dwUI_Game &= (0xffffffff - 0x40);
 }
 
 WORD
@@ -1313,6 +1391,11 @@ PAL_ItemUseMenu(
 
    bSelectedColor = MENUITEM_COLOR_SELECTED_FIRST;
    dwColorChangeTime = 0;
+
+   if (g_MenuCtrl.MenuItem != gSelectTargetMenuItem)
+   {
+	   memset(gSelectTargetMenuItem, 0, sizeof(MENUITEM) * 30);
+   }
 
    while (TRUE)
    {
@@ -1392,7 +1475,13 @@ PAL_ItemUseMenu(
 
          PAL_DrawText(PAL_GetWord(gpGlobals->g.PlayerRoles.rgwName[gpGlobals->rgParty[i].wPlayerRole]),
             PAL_XY(125, 16 + 20 * i), bColor, TRUE, FALSE, FALSE);
+
+		 gSelectTargetMenuItem[i].fEnabled = TRUE;
+		 gSelectTargetMenuItem[i].pos = PAL_XY(125, 16 + 20 * i);
+		 gSelectTargetMenuItem[i].size = PAL_XY(16 * 3, 20);
       }
+
+	  Setup_MenuCtrl(gSelectTargetMenuItem, gpGlobals->wMaxPartyMemberIndex + 1, wSelectedPlayer);
 
       PAL_RLEBlitToSurface(PAL_SpriteGetFrame(gpSpriteUI, SPRITENUM_ITEMBOX), gpScreen,
          PAL_XY(120, 80));
@@ -1452,9 +1541,26 @@ PAL_ItemUseMenu(
             PAL_DrawText(
                PAL_GetWord(gpGlobals->g.PlayerRoles.rgwName[gpGlobals->rgParty[wSelectedPlayer].wPlayerRole]),
                PAL_XY(125, 16 + 20 * wSelectedPlayer), bSelectedColor, FALSE, TRUE, FALSE);
+
          }
 
          PAL_ProcessEvent();
+
+		 if (g_MenuCtrl.Click != 0)
+		 {
+			 INT select = g_MenuCtrl.Select;
+			 wSelectedPlayer = select;
+			 if (g_MenuCtrl.Click == 2)
+			 {
+				 if (g_MenuCtrl.LastSelect == select)
+				 {
+					 g_InputState.dwKeyPress |= kKeySearch;
+				 }
+				 g_MenuCtrl.LastSelect = select;
+				 g_MenuCtrl.Click = 0;
+			 }
+			 break;
+		 }
 
          if (g_InputState.dwKeyPress != 0)
          {
@@ -1466,6 +1572,7 @@ PAL_ItemUseMenu(
 
       if (i <= 0)
       {
+		  Setup_MenuCtrl(NULL, 0, 0);
          return MENUITEM_VALUE_CANCELLED;
       }
 
@@ -1482,10 +1589,12 @@ PAL_ItemUseMenu(
       }
       else if (g_InputState.dwKeyPress & kKeyMenu)
       {
+		  Setup_MenuCtrl(NULL, 0, 0);
          break;
       }
       else if (g_InputState.dwKeyPress & kKeySearch)
       {
+		  Setup_MenuCtrl(NULL, 0, 0);
          return gpGlobals->rgParty[wSelectedPlayer].wPlayerRole;
       }
    }
@@ -1589,6 +1698,9 @@ PAL_BuyMenu(
    WORD            w;
    SDL_Rect        rect = {125, 8, 190, 190};
 
+   BOOL buttomstatus = gUI_Buttom[buttomBACK].visable;
+   gUI_Buttom[buttomBACK].visable = TRUE;
+   
    //
    // create the menu items
    //
@@ -1605,7 +1717,7 @@ PAL_BuyMenu(
       rgMenuItem[i].wNumWord = gpGlobals->g.lprgStore[wStoreNum].rgwItems[i];
       rgMenuItem[i].fEnabled = TRUE;
       rgMenuItem[i].pos = PAL_XY(150, y);
-
+	  rgMenuItem[i].size = PAL_XY(16*6, 18);
       y += 18;
    }
 
@@ -1660,6 +1772,7 @@ PAL_BuyMenu(
          }
       }
    }
+   gUI_Buttom[buttomBACK].visable = buttomstatus;
 }
 
 static VOID
@@ -1769,6 +1882,7 @@ PAL_EquipItemMenu(
    BYTE             bColor, bSelectedColor;
    DWORD            dwColorChangeTime;
 
+   gpGlobals->dwUI_Game |= 0x10;
    gpGlobals->wLastUnequippedItem = wItem;
 
    PAL_MKFDecompressChunk(bufBackground, 320 * 200, EQUIPMENU_BACKGROUND_FBPNUM,
@@ -1865,17 +1979,23 @@ PAL_EquipItemMenu(
       PAL_DrawNumber(PAL_GetPlayerDefense(w), 4, gConfig.ScreenLayout.EquipStatusValues[2], kNumColorCyan, kNumAlignRight);
       PAL_DrawNumber(PAL_GetPlayerDexterity(w), 4, gConfig.ScreenLayout.EquipStatusValues[3], kNumColorCyan, kNumAlignRight);
       PAL_DrawNumber(PAL_GetPlayerFleeRate(w), 4, gConfig.ScreenLayout.EquipStatusValues[4], kNumColorCyan, kNumAlignRight);
-
+	  
       //
       // Draw a box for player selection
       //
       PAL_CreateBox(gConfig.ScreenLayout.EquipRoleListBox, gpGlobals->wMaxPartyMemberIndex, PAL_WordMaxWidth(36, 4) - 1, 0, FALSE);
 
+	  if (g_MenuCtrl.MenuItem != gSelectTargetMenuItem)
+	  {
+		  memset(gSelectTargetMenuItem, 0, sizeof(MENUITEM) * 30);
+	  }
       //
       // Draw the label of players
       //
       for (i = 0; i <= gpGlobals->wMaxPartyMemberIndex; i++)
       {
+		  gSelectTargetMenuItem[i].fEnabled = TRUE;
+
          w = gpGlobals->rgParty[i].wPlayerRole;
 
          if (iCurrentPlayer == i)
@@ -1903,8 +2023,11 @@ PAL_EquipItemMenu(
 
          PAL_DrawText(PAL_GetWord(gpGlobals->g.PlayerRoles.rgwName[w]),
             PAL_XY_OFFSET(gConfig.ScreenLayout.EquipRoleListBox, 13, 13 + 18 * i), bColor, TRUE, FALSE, FALSE);
-      }
 
+		 gSelectTargetMenuItem[i].pos = PAL_XY_OFFSET(gConfig.ScreenLayout.EquipRoleListBox, 13, 13 + 18 * i);
+		 gSelectTargetMenuItem[i].size = PAL_XY(16*3, 18);
+      }
+	  Setup_MenuCtrl(gSelectTargetMenuItem, gpGlobals->wMaxPartyMemberIndex + 1, iCurrentPlayer);
       //
       // Draw the text label and amount of the item
       //
@@ -1957,6 +2080,23 @@ PAL_EquipItemMenu(
             }
          }
 
+		 if (g_MenuCtrl.Click != 0)
+		 {
+			 INT select = g_MenuCtrl.Select;
+			 iCurrentPlayer = select;
+			 if (g_MenuCtrl.Click == 2)
+			 {
+				 if (g_MenuCtrl.LastSelect == select)
+				 {
+					 g_InputState.dwKeyPress |= kKeySearch;
+				 }
+				 g_MenuCtrl.LastSelect = select;
+				 g_MenuCtrl.Click = 0;
+
+			 }
+			 break;
+		 }
+
          if (g_InputState.dwKeyPress != 0)
          {
             break;
@@ -1967,6 +2107,8 @@ PAL_EquipItemMenu(
 
       if (wItem == 0)
       {
+		  gpGlobals->dwUI_Game &= (0xffffffff - 0x10);
+		  Setup_MenuCtrl(NULL, 0, 0);
          return;
       }
 
@@ -1988,6 +2130,8 @@ PAL_EquipItemMenu(
       }
       else if (g_InputState.dwKeyPress & kKeyMenu)
       {
+		  gpGlobals->dwUI_Game &= (0xffffffff - 0x10);
+		  Setup_MenuCtrl(NULL, 0, 0);
          return;
       }
       else if (g_InputState.dwKeyPress & kKeySearch)
@@ -2005,6 +2149,8 @@ PAL_EquipItemMenu(
          }
       }
    }
+   gpGlobals->dwUI_Game &= (0xffffffff - 0x10);
+   Setup_MenuCtrl(NULL, 0, 0);
 }
 
 VOID

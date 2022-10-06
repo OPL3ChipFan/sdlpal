@@ -156,6 +156,9 @@ typedef struct tagBATTLE
    SDL_Surface     *lpSceneBuf;
    SDL_Surface     *lpBackground;
 
+   SDL_Surface     *lpSceneBuf240;
+   SDL_Surface     *lpBackground240;
+
    SHORT            sBackgroundColorShift;
 
    LPSPRITE         lpSummonSprite;       // sprite of summoned god

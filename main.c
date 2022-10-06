@@ -229,6 +229,8 @@ PAL_SplashScreen(
       return;
    }
 
+   gpGlobals->dwUI_Game |= 1;
+
    //
    // Allocate all the needed memory at once for simplification
    //
@@ -440,6 +442,7 @@ PAL_SplashScreen(
    }
 
    PAL_FadeOut(1);
+   gpGlobals->dwUI_Game = 0;
 }
 
 

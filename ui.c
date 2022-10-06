@@ -24,6 +24,11 @@
 
 LPSPRITE      gpSpriteUI = NULL;
 
+volatile MENUMOUSECTRL g_MenuCtrl;
+volatile LISTMENU g_ListMenu;
+
+extern BOOL mouseLkey, mouseRkey, mouseMkey;
+
 static LPBOX
 PAL_CreateBoxInternal(
 	const SDL_Rect *rect
@@ -87,6 +92,54 @@ PAL_InitUI(
 
    PAL_MKFReadChunk(gpSpriteUI, iSize, CHUNKNUM_SPRITEUI, gpGlobals->f.fpDATA);
 
+   extern SDL_Rect           gViewRect;
+   BOOL is4_3 = FALSE;
+   if ((float)gConfig.dwScreenHeight / (float)gConfig.dwScreenWidth == 0.75f)
+	   is4_3 = TRUE;
+
+   memset(gUI_Buttom, 0, sizeof(UIBUTTOM)*MAX_BUTTOM);
+   AddButtom(buttomBACK, "back0.bmp", "back1.bmp", NULL);
+   SetButtom(buttomBACK, 324, -20, 30, 25);
+   AddButtom(buttomMENU, "menu.bmp", NULL, NULL);
+   SetButtom(buttomMENU, 324, -20, 30, 25);
+   if (is4_3)
+   {
+	   gUI_Buttom[buttomBACK].Alpha = 0xC0;
+	   gUI_Buttom[buttomMENU].Alpha = 0xA0;
+   }
+
+   AddButtom(buttomAttack, "attack0.bmp", NULL, "attack2.bmp"); //³ò§ð
+   if (is4_3)
+   {
+	   SetButtom(buttomAttack, 5, 4, 30, 25);
+	   gUI_Buttom[buttomAttack].Alpha = 0xC0;
+   }
+   else
+		SetButtom(buttomAttack, -34, 4, 30, 25);
+   AddButtom(buttomMagic, "magic0.bmp", NULL, "magic2.bmp"); //±j§ð
+   if (is4_3)
+   {
+	   SetButtom(buttomMagic, 45, 4, 30, 25);
+	   gUI_Buttom[buttomMagic].Alpha = 0xC0;
+   }
+   else
+	   SetButtom(buttomMagic, -34, 4+(4+25), 30, 25);
+   AddButtom(buttomRepet, "repet0.bmp", NULL, "repet2.bmp"); //­«½Æ
+   if (is4_3)
+   {
+	   SetButtom(buttomRepet, 85, 4, 30, 25);
+	   gUI_Buttom[buttomRepet].Alpha = 0xC0;
+   }
+   else
+	   SetButtom(buttomRepet, -34, 4 + ((4 + 25)*2), 30, 25);
+   AddButtom(buttomClose, "close0.bmp", "close1.bmp", NULL);
+   SetButtom(buttomClose, 324, -20, 30, 25);
+
+   AddButtom(buttomLOGO, "LOGO.bmp", NULL, NULL); //copyright logo
+   SetButtom(buttomLOGO, 30, 170, 245, 23);
+#ifdef PAL_HAS_GAMEPAD
+   AddGamePad();
+#endif
    return 0;
 }
 
@@ -114,6 +167,12 @@ PAL_FreeUI(
       free(gpSpriteUI);
       gpSpriteUI = NULL;
    }
+
+   for (int i = 0; i < MAX_BUTTOM; i++)
+   {
+	   DelButtom(i);
+   }
+   memset(gUI_Buttom, 0, sizeof(UIBUTTOM)*MAX_BUTTOM);
 }
 
 LPBOX
@@ -396,6 +455,7 @@ PAL_DeleteBox(
    //
    VIDEO_FreeSurface(lpBox->lpSavedArea);
    free(lpBox);
+   VIDEO_Clean240();
 }
 
 WORD
@@ -431,8 +491,10 @@ PAL_ReadMenu(
 --*/
 {
    int               i;
+
    WORD              wCurrentItem    = (wDefaultItem < nMenuItem) ? wDefaultItem : 0;
 
+   Setup_MenuCtrl(rgMenuItem, nMenuItem, wCurrentItem);
    //
    // Draw all the menu texts.
    //
@@ -453,6 +515,7 @@ PAL_ReadMenu(
       }
 
       PAL_DrawText(PAL_GetWord(rgMenuItem[i].wNumWord), rgMenuItem[i].pos, bColor, TRUE, TRUE, FALSE);
+
    }
 
    if (lpfnMenuItemChanged != NULL)
@@ -463,7 +526,7 @@ PAL_ReadMenu(
    while (TRUE)
    {
       PAL_ClearKeyState();
-
+	  
       //
       // Redraw the selected item if needed.
       //
@@ -474,6 +537,50 @@ PAL_ReadMenu(
       }
 
       PAL_ProcessEvent();
+
+	  if (gUI_Buttom[buttomLOGO].visable == TRUE && gUI_Buttom[buttomLOGO].KeyClick == TRUE)
+	  {
+		  gUI_Buttom[buttomLOGO].KeyClick = FALSE;
+		  gUI_Buttom[buttomLOGO].visable = FALSE;
+		  PAL_AdditionalCredits();
+		  return MENUITEM_VALUE_RESET;
+	  }
+	  if (g_InputState.dwKeyPress == 0)
+	  {
+		  for (i = 0; i < nMenuItem; i++)
+		  {
+			  if (rgMenuItem[i].fEnabled)
+			  {
+				  if (g_MenuCtrl.Click && g_MenuCtrl.Select == i)
+				  {
+					  wCurrentItem = i;
+					  for (int j = 0; j < nMenuItem; j++)
+					  {
+						  BYTE bColor = bLabelColor;
+						  if (wCurrentItem == j)
+							  bColor = MENUITEM_COLOR_SELECTED_INACTIVE;
+						  PAL_DrawText(PAL_GetWord(rgMenuItem[j].wNumWord), rgMenuItem[j].pos, bColor, TRUE, TRUE, FALSE);
+						  
+					  }
+					  if (lpfnMenuItemChanged != NULL)
+					  {
+						  (*lpfnMenuItemChanged)(rgMenuItem[wCurrentItem].wValue);
+					  }
+					  if (g_MenuCtrl.Click == 2)
+					  {
+						  g_MenuCtrl.Click = 0;
+						  if (g_MenuCtrl.LastSelect == i)
+						  {
+							  g_InputState.dwKeyPress |= kKeySearch;
+						  }
+						  else
+							  g_MenuCtrl.LastSelect = i;
+					  }
+					  break;
+				  }
+			  }
+		  }
+	  }
 
       if (g_InputState.dwKeyPress & (kKeyDown | kKeyRight))
       {
@@ -594,7 +701,7 @@ PAL_ReadMenu(
          {
             PAL_DrawText(PAL_GetWord(rgMenuItem[wCurrentItem].wNumWord),
                rgMenuItem[wCurrentItem].pos, MENUITEM_COLOR_CONFIRMED, FALSE, TRUE, FALSE);
-
+			Setup_MenuCtrl(NULL, 0, 0);
             return rgMenuItem[wCurrentItem].wValue;
          }
       }
@@ -604,7 +711,7 @@ PAL_ReadMenu(
       //
       SDL_Delay(50);
    }
-
+   Setup_MenuCtrl(NULL, 0, 0);
    return MENUITEM_VALUE_CANCELLED;
 }
 
@@ -728,7 +835,7 @@ PAL_TextWidth(
     {
         w += PAL_CharWidth(lpszItemText[j]);
     }
-    return w;
+    return (int)w;
 }
 
 INT
@@ -790,7 +897,7 @@ PAL_WordMaxWidth(
 	for (i = 0; i < nWordNum; i++)
 	{
 		LPCWSTR itemText = PAL_GetWord(nFirstWord + i);
-		int j = 0, l = wcslen(itemText), w = 0;
+		int j = 0, l = (int)wcslen(itemText), w = 0;
 		for (j = 0; j < l; j++)
 		{
 			w += PAL_CharWidth(itemText[j]);
@@ -824,7 +931,7 @@ PAL_WordWidth(
 --*/
 {
 	LPCWSTR itemText = PAL_GetWord(nWordIndex);
-	int i, l = wcslen(itemText), w = 0;
+	int i, l = (int)wcslen(itemText), w = 0;
 	for (i = 0; i < l; i++)
 	{
 		w += PAL_CharWidth(itemText[i]);
@@ -962,4 +1069,422 @@ PAL_GetObjectDesc(
    }
 
    return NULL;
+}
+
+void Setup_MenuCtrl(MENUITEM * rgMenuItem, int count, int select)
+{
+	if (rgMenuItem == NULL || count <= 0)
+	{
+		g_MenuCtrl.MenuItem = NULL;
+	}
+	else if (rgMenuItem == g_MenuCtrl.MenuItem)
+	{
+		return;
+	}
+	else
+	{
+		g_MenuCtrl.MenuItem = rgMenuItem;
+		g_MenuCtrl.Click = 0;
+		g_MenuCtrl.Count = count;
+		g_MenuCtrl.LastSelect = select;
+		g_MenuCtrl.Select = select;
+	}
+}
+
+void ListMenuOpen(int *selectitem, int *itemCount, int x, int y, int iItemsPerLine, int iLinesPerPage, int iItemTextWidth)
+{
+	memset(g_ListMenu.ListScreen->pixels, 1, 320 * 240);
+	gpGlobals->dwUI_Game |= 0x200; //Scroll menu
+	g_ListMenu.iSelect = selectitem;
+	g_ListMenu.iCount = itemCount;
+	g_ListMenu.wClick = 0;
+	g_ListMenu.iItemsPerLine = iItemsPerLine;
+	g_ListMenu.iLinesPerPage = iLinesPerPage;
+	g_ListMenu.iItemTextWidth = iItemTextWidth;
+
+	g_ListMenu.srcrng.x = 0;
+	g_ListMenu.srcrng.y = 18;
+	g_ListMenu.srcrng.w = g_ListMenu.iItemTextWidth * g_ListMenu.iItemsPerLine;
+	g_ListMenu.srcrng.h = g_ListMenu.iLinesPerPage * 18;
+	g_ListMenu.dstrng.x = x;
+	g_ListMenu.dstrng.y = y;
+	g_ListMenu.dstrng.w = g_ListMenu.srcrng.w;
+	g_ListMenu.dstrng.h = g_ListMenu.srcrng.h;
+
+	ListMenu_GoTpFocus();
+}
+
+void ListMenuClose()
+{
+	gpGlobals->dwUI_Game &= (0xffffffff - 0x200);
+	g_ListMenu.fDoUpdate = FALSE;
+	g_ListMenu.wClick = 0;
+	g_ListMenu.iVectorY = 0;
+}
+
+void ListMenuUpdate()
+{
+	int item_delta, i;
+	gpGlobals->dwUI_Game |= 0x200; //Scroll menu
+	const int          iLinesMax = g_ListMenu.iLinesPerPage * 18;
+	int bottom = (*g_ListMenu.iCount / g_ListMenu.iItemsPerLine);
+	if (*g_ListMenu.iCount % g_ListMenu.iItemsPerLine != 0)
+		bottom += 1;
+	bottom = bottom * 18 - iLinesMax;
+	if (bottom < 0) bottom = 0;
+	//
+	// Process input
+	//
+	i = *g_ListMenu.iSelect + 1;
+	if (g_InputState.dwKeyPress & kKeyUp)
+	{
+		item_delta = -g_ListMenu.iItemsPerLine;
+		g_ListMenu.iVectorY += -18;
+
+		int y = ((i / g_ListMenu.iItemsPerLine) * 18) + g_ListMenu.iShiftY;
+		if (y < 0)
+		{
+			g_ListMenu.iShiftY = 0;
+			g_ListMenu.iVectorY = 0;
+		}
+
+	}
+	else if (g_InputState.dwKeyPress & kKeyDown)
+	{
+		item_delta = g_ListMenu.iItemsPerLine;
+		g_ListMenu.iVectorY += 18;
+
+		if (g_ListMenu.iShiftY < -bottom)
+		{
+			g_ListMenu.iShiftY = -bottom;
+			g_ListMenu.iVectorY = 0;
+		}
+	}
+	else if (g_InputState.dwKeyPress & kKeyLeft)
+	{
+		item_delta = -1;
+		if (*g_ListMenu.iSelect % g_ListMenu.iItemsPerLine == 0)
+		{
+			g_ListMenu.iVectorY += -18;
+			int y = ((i / g_ListMenu.iItemsPerLine) * 18) + g_ListMenu.iShiftY;
+			if (y < 0)
+			{
+				g_ListMenu.iShiftY = 0;
+				g_ListMenu.iVectorY = 0;
+			}
+		}
+	}
+	else if (g_InputState.dwKeyPress & kKeyRight)
+	{
+		item_delta = 1;
+		if (*g_ListMenu.iSelect % g_ListMenu.iItemsPerLine == 2)
+		{
+			g_ListMenu.iVectorY += 18;
+			if (g_ListMenu.iShiftY < -bottom)
+			{
+				g_ListMenu.iShiftY = -bottom;
+				g_ListMenu.iVectorY = 0;
+			}
+		}
+	}
+	else if (g_InputState.dwKeyPress & kKeyPgUp)
+	{
+		item_delta = -(g_ListMenu.iItemsPerLine * g_ListMenu.iLinesPerPage);
+		g_ListMenu.iVectorY += -(18 * g_ListMenu.iLinesPerPage);
+		int y = ((i / g_ListMenu.iItemsPerLine) * 18) + g_ListMenu.iShiftY;
+		if (y < 0 || *g_ListMenu.iSelect + item_delta < 0)
+		{
+			g_ListMenu.iShiftY = 0;
+			g_ListMenu.iVectorY = 0;
+		}
+	}
+	else if (g_InputState.dwKeyPress & kKeyPgDn)
+	{
+		item_delta = g_ListMenu.iItemsPerLine * g_ListMenu.iLinesPerPage;
+		g_ListMenu.iVectorY += 18 * g_ListMenu.iLinesPerPage;
+		if (g_ListMenu.iShiftY < -bottom || *g_ListMenu.iSelect + item_delta >= *g_ListMenu.iCount)
+		{
+			g_ListMenu.iShiftY = -bottom;
+			g_ListMenu.iVectorY = 0;
+		}
+	}
+	else if (g_InputState.dwKeyPress & kKeyHome)
+	{
+		item_delta = -*g_ListMenu.iSelect;
+		g_ListMenu.iShiftY = 0;
+		g_ListMenu.iVectorY = 0;
+	}
+	else if (g_InputState.dwKeyPress & kKeyEnd)
+	{
+		item_delta = *g_ListMenu.iCount - *g_ListMenu.iSelect - 1;
+		g_ListMenu.iShiftY = -((*g_ListMenu.iCount / g_ListMenu.iItemsPerLine + 1) * 18 - iLinesMax);
+		g_ListMenu.iVectorY = 0;
+	}
+	else
+	{
+		item_delta = 0;
+	}
+
+	//
+	// Make sure the current menu item index is in bound
+	//
+	if (item_delta != 0)
+	{
+		if (*g_ListMenu.iSelect + item_delta < 0)
+			*g_ListMenu.iSelect = 0;
+		else if (*g_ListMenu.iSelect + item_delta >= *g_ListMenu.iCount)
+			*g_ListMenu.iSelect = *g_ListMenu.iCount - 1;
+		else
+			*g_ListMenu.iSelect += item_delta;
+		ListMenu_GoTpFocus();
+	}
+	if (g_ListMenu.ListScreen == NULL) return;
+
+	g_ListMenu.fDoUpdate = TRUE;
+
+
+	if (bottom <= 0)
+	{
+		g_ListMenu.iShiftY = 0;
+		g_ListMenu.iVectorY = 0;
+		return;
+	}
+	if (g_ListMenu.iVectorY)
+	{
+		if (g_ListMenu.iVectorY > 0)
+		{
+			if (g_ListMenu.iVectorY > 100)
+			{
+				g_ListMenu.iShiftY -= 25;
+				g_ListMenu.iVectorY -= 25;
+			}
+			else if (g_ListMenu.iVectorY > 60)
+			{
+				g_ListMenu.iShiftY -= 16;
+				g_ListMenu.iVectorY -= 16;
+			}
+			else if (g_ListMenu.iVectorY > 20)
+			{
+				g_ListMenu.iShiftY -= 8;
+				g_ListMenu.iVectorY -= 8;
+			}
+			else if (g_ListMenu.iVectorY >= 4)
+			{
+				g_ListMenu.iShiftY -= 4;
+				g_ListMenu.iVectorY -= 4;
+			}
+			else
+			{
+				g_ListMenu.iShiftY--;
+				g_ListMenu.iVectorY--;
+			}
+		}
+		else
+		{
+			if (g_ListMenu.iVectorY < -100)
+			{
+				g_ListMenu.iShiftY += 25;
+				g_ListMenu.iVectorY += 25;
+			}
+			else if (g_ListMenu.iVectorY < -60)
+			{
+				g_ListMenu.iShiftY += 16;
+				g_ListMenu.iVectorY += 16;
+			}
+			else if (g_ListMenu.iVectorY < -20)
+			{
+				g_ListMenu.iShiftY += 8;
+				g_ListMenu.iVectorY += 8;
+			}
+			else if (g_ListMenu.iVectorY <= -4)
+			{
+				g_ListMenu.iShiftY += 4;
+				g_ListMenu.iVectorY += 4;
+			}
+			else
+			{
+				g_ListMenu.iShiftY++;
+				g_ListMenu.iVectorY++;
+			}
+		}
+	}
+
+
+	if (g_ListMenu.iShiftY > 0)
+	{
+		if (g_ListMenu.iShiftY > 18 * 2)
+		{
+			g_ListMenu.iShiftY = 18 * 2;
+			g_ListMenu.iVectorY = (18 * 2);
+		}
+		if (g_ListMenu.iVectorY == 0)
+			g_ListMenu.iVectorY += g_ListMenu.iShiftY;
+	}
+	else if (g_ListMenu.iShiftY < -bottom)
+	{
+		if (g_ListMenu.iShiftY < -(bottom + 18 * 2))
+		{
+			g_ListMenu.iShiftY = -(bottom + 18 * 2);
+			g_ListMenu.iVectorY = -(18 * 2);
+		}
+		if (g_ListMenu.iVectorY == 0)
+			g_ListMenu.iVectorY += (g_ListMenu.iShiftY + bottom);
+	}
+
+}
+
+
+void ListMenu_MouseEvent(int mx, int my, Uint32 status)
+{
+	if (mx < g_ListMenu.dstrng.x) return;
+	if (mx > g_ListMenu.dstrng.x + g_ListMenu.dstrng.w) return;
+	if (my < g_ListMenu.dstrng.y) return;
+	if (my > g_ListMenu.dstrng.y + g_ListMenu.dstrng.h) return;
+
+	static BOOL isRoll;
+	static int SX, SY;
+
+	const int          iLinesMax = g_ListMenu.iLinesPerPage * 18;
+
+
+	int x = ((mx - g_ListMenu.dstrng.x) / g_ListMenu.iItemTextWidth) + 1;
+	if (x > g_ListMenu.iItemsPerLine) x = g_ListMenu.iItemsPerLine;
+	if (x < 1) x = 1;
+	int y = (my - g_ListMenu.dstrng.y + (-g_ListMenu.iShiftY)) / 18;
+	if (y < 0) y = 0;
+	int select = (y * g_ListMenu.iItemsPerLine) + x - 1;
+	if (status == SDL_MOUSEBUTTONDOWN)
+	{
+		SX = mx;
+		SY = my;
+		isRoll = FALSE;
+		g_ListMenu.iVectorY = 0;
+	}
+	else if (status == SDL_MOUSEMOTION)
+	{
+
+		if (SX - mx > 5 || SX - mx < -5 || SY - my >5 || SY - my < -5)
+		{
+			isRoll = TRUE;
+		}
+		else
+			g_ListMenu.iVectorY += (SY - my);
+		if (isRoll)
+		{
+			int p = SY - my;
+			if (p < 0) p = -p;
+			if (p == 0)
+			{
+				g_ListMenu.iVectorY = 0;
+			}
+			else if (p < 5)
+			{
+				g_ListMenu.iVectorY += (SY - my);
+			}
+			else if (p < 10)
+			{
+				g_ListMenu.iVectorY += (SY - my) * 4;
+			}
+			else
+			{
+				g_ListMenu.iVectorY += (SY - my) * 8;
+			}
+			SY = my;
+		}
+	}
+	else if (status == SDL_MOUSEBUTTONUP)
+	{
+		if (isRoll == FALSE)
+		{
+			if (*g_ListMenu.iSelect != select)
+			{
+				*g_ListMenu.iSelect = select;
+			}
+			else
+			{
+				g_ListMenu.wClick = 1;
+			}
+		}
+		else
+		{
+			isRoll = FALSE;
+		}
+	}
+}
+
+void ListMenu_GoTpFocus()
+{
+	const int          iLinesMax = g_ListMenu.iLinesPerPage * 18;
+	const int iHalfList = g_ListMenu.iLinesPerPage / 2;
+	int bottom = (*g_ListMenu.iCount / g_ListMenu.iItemsPerLine);
+	if (*g_ListMenu.iCount % g_ListMenu.iItemsPerLine != 0)
+		bottom += 1;
+	bottom = bottom * 18 - iLinesMax;
+	if (bottom < 0) return;
+
+	int selecty = *g_ListMenu.iSelect / g_ListMenu.iItemsPerLine;
+	g_ListMenu.iVectorY = 0;
+	
+	if (selecty < iHalfList)
+		g_ListMenu.iShiftY = 0;
+	else
+	{
+		g_ListMenu.iShiftY = -(selecty - iHalfList) * 18;
+		if (g_ListMenu.iShiftY < -bottom)
+			g_ListMenu.iShiftY = -bottom;
+	}
+		
+}
+
+VOID
+PAL_AdditionalCredits(
+	VOID
+)
+/*++
+Purpose:
+
+Show the additional credits.
+
+Parameters:
+
+None.
+
+Return value:
+
+None.
+
+--*/
+{
+
+
+	LPCWSTR rgszStrings[] = {
+		L"  PAL2019 (http://sdlpal.github.io/)",
+		L"  by SOFTSTAR (C) 1995-2019",
+		L"  include SDL, SDLPAL ",
+		L"  ",
+		L"  GNU General Public License v3",
+		L"  ",
+		L"  ",  // Porting information line 1
+		L"  ",  // Porting information line 2
+		L"  ",  // GNU line 1
+		L"  ",  // GNU line 2
+		L"  ",  // GNU line 3
+		L"  ",  // Press Enter to continue
+	};
+
+	int        i = 0;
+
+	PAL_DrawOpeningMenuBackground();
+
+	for (i = 0; i < 4; i++)
+	{
+		//WCHAR buffer[48];
+		//wcsncpy(buffer, rgszStrings[i],20);
+		PAL_DrawText(rgszStrings[i], PAL_XY(0, 2 + i * 16), DESCTEXT_COLOR, TRUE, FALSE, FALSE);
+	}
+
+	PAL_SetPalette(0, FALSE);
+	VIDEO_UpdateScreen(NULL);
+
+	PAL_WaitForKey(0);
 }

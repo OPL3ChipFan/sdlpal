@@ -23,6 +23,7 @@
 #include "font.h"
 #include "util.h"
 #include "text.h"
+#include "global.h"
 
 #define _FONT_C
 
@@ -165,7 +166,10 @@ static void PAL_LoadEmbeddedFont(void)
 	//
 	// Read bitmaps from wor16.fon file.
 	//
-	fp = UTIL_OpenFile("wor16.fon");
+	if (gpGlobals->wLanguage == 0)
+		fp = UTIL_OpenFile("wor16.fon");
+	else
+		fp = UTIL_OpenFile("wor16chs.fon");
 
 	//
 	// The font glyph data begins at offset 0x682 in wor16.fon.

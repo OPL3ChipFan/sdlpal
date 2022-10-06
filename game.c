@@ -86,11 +86,11 @@ PAL_GameMain(
    // Initialize game data and set the flags to load the game resources.
    //
    PAL_InitGameData(gpGlobals->bCurrentSaveSlot);
-
    //
    // Run the main game loop.
    //
    dwTime = SDL_GetTicks();
+   gUI_Buttom[buttomMENU].visable = TRUE;
    while (TRUE)
    {
       //
@@ -111,7 +111,7 @@ PAL_GameMain(
       // Clear the input state of previous frame.
       //
       PAL_ClearKeyState();
-
+	  
       //
       // Wait for the time of one frame. Accept input here.
       //

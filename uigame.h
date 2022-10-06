@@ -40,7 +40,8 @@ PAL_OpeningMenu(
 
 INT
 PAL_SaveSlotMenu(
-   WORD        wDefaultSlot
+   WORD        wDefaultSlot,
+	BOOL       fIsSave
 );
 
 WORD

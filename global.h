@@ -543,6 +543,24 @@ typedef struct tagGLOBALVARS
    INVENTORY        rgInventory[MAX_INVENTORY];  // inventory status
    LPOBJECTDESC     lpObjectDesc;
    DWORD            dwFrameNum;
+
+   BOOL             fDoAutoSave;
+
+   // 0x01 press any key
+   // 0x02 in player map control
+   // 0x04 in-game menu
+   // 0x08 use item menu
+   // 0x10 equipment menu
+   // 0x20 magic menu
+   // 0x40 player status
+   // 0x80 battle
+   // 0x100 script
+   // 0x200 Scroll menu
+   DWORD            dwUI_Game;
+
+   // 0 cht
+   // 1 chs
+   WORD             wLanguage;
 } GLOBALVARS, *LPGLOBALVARS;
 
 PAL_C_LINKAGE_BEGIN
@@ -569,6 +587,8 @@ PAL_FreeGlobals(
    VOID
 );
 
+VOID PAL_AutoSaveGame();
+
 VOID
 PAL_SaveGame(
    int           iSaveSlot,
@@ -578,11 +598,6 @@ PAL_SaveGame(
 VOID
 PAL_InitGameData(
    INT           iSaveSlot
-);
-
-INT
-PAL_CountItem(
-   WORD          wObjectID
 );
 
 BOOL

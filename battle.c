@@ -645,7 +645,7 @@ PAL_BattleWon(
    gpGlobals->dwCash += g_Battle.iCashGained;
 
     
-    const MENUITEM      rgFakeMenuItem[] =
+    MENUITEM      rgFakeMenuItem[] =
     {
         // value  label                        enabled   pos
         { 1,      gpGlobals->g.PlayerRoles.rgwName[0],    TRUE,     PAL_XY(0, 0) },
@@ -656,7 +656,7 @@ PAL_BattleWon(
         { 6,      gpGlobals->g.PlayerRoles.rgwName[5],    TRUE,     PAL_XY(0, 0) },
     };
     int maxNameWidth = PAL_MenuTextMaxWidth(rgFakeMenuItem, sizeof(rgFakeMenuItem) / sizeof(MENUITEM));
-    const MENUITEM      rgFakeMenuItem2[] =
+    MENUITEM      rgFakeMenuItem2[] =
     {
         // value  label                        enabled   pos
         { 1,      STATUS_LABEL_LEVEL,          TRUE,     PAL_XY(0, 0) },
@@ -1136,6 +1136,9 @@ PAL_StartBattle(
    WORD           w, wPrevWaveLevel;
    SHORT          sPrevWaveProgression;
 
+   BOOL mainmenu_status = gUI_Buttom[buttomMENU].visable;
+   gUI_Buttom[buttomMENU].visable = FALSE;
+   gpGlobals->dwUI_Game |= 0x80;
    //
    // Set the screen waving effects
    //
@@ -1378,10 +1381,16 @@ PAL_StartBattle(
    g_Battle.fPrevAutoAtk = FALSE;
 #endif
 
+   BackupBACK();
    //
    // Run the main battle routine.
    //
    i = PAL_BattleMain();
+
+
+	RestoreBACK();
+	gUI_Buttom[buttomMagic].KeyClick = FALSE;
+   gUI_Buttom[buttomBACK].visable = FALSE;
 
    if (i == kBattleResultWon)
    {
@@ -1389,6 +1398,7 @@ PAL_StartBattle(
       // Player won the battle. Add the Experience points.
       //
       PAL_BattleWon();
+	  gpGlobals->fDoAutoSave = TRUE;
    }
 
    //
@@ -1433,6 +1443,9 @@ PAL_StartBattle(
    //
    gpGlobals->sWaveProgression = sPrevWaveProgression;
    gpGlobals->wScreenWave = wPrevWaveLevel;
+
+   gUI_Buttom[buttomMENU].visable = mainmenu_status;
+   gpGlobals->dwUI_Game &= (0xffffffff - 0x80);
 
    return i;
 }

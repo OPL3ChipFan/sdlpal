@@ -924,6 +924,28 @@ PAL_GetWord(
 
 --*/
 {
+	static wchar_t ctext[255];
+	if (iNumWord > 0x6FFF)
+	{
+		ctext[0] = 0; ctext[1] = 0;
+		int id = iNumWord - 0x6FFF;
+		switch (id)
+		{
+		case 1:
+		{
+			CHAR text[13] = { 0xBD,0xD0, 0xBF,0xEF, 0xBE,0xDC, 0xB9,0xEF, 0xB6,0x48, 0xA1,0x47, 0 }; //select target
+			PAL_MultiByteToWideChar((LPCSTR)text, -1, ctext, 24);
+		}
+		break;
+		case LOADMENU_LABEL_SLOT_FIRST:
+		{
+			CHAR text[10] = { 0xA6, 0xDB, 0xB0, 0xCA, 0xA6, 0x73, 0xC0, 0xC9, 0 ,0 }; //auto save
+			PAL_MultiByteToWideChar((LPCSTR)text, -1, ctext, 20);
+		}
+		break;
+		}
+		return (LPCWSTR)ctext;
+	}
    return (iNumWord >= g_TextLib.nWords || !g_TextLib.lpWordBuf[iNumWord]) ? L"" : g_TextLib.lpWordBuf[iNumWord];
 }
 
@@ -1008,7 +1030,21 @@ PAL_DrawText(
 --*/
 {
    SDL_Rect   rect, urect;
+   SDL_Surface *screen = gpScreen;
+   BOOL Draw240 = gDraw240;
 
+   if (g_ListMenu.fDoUpdate == TRUE)
+   {
+	   screen = g_ListMenu.ListScreen;
+	   if (bColor == 1)
+		   bColor = 0;
+   }
+   else if (gDraw240)
+   {
+	   screen = gpScreen240;
+	   if (bColor == 1)
+		   bColor = 0;
+   }
    urect.x = rect.x = PAL_X(pos);
    urect.y = rect.y = PAL_Y(pos);
    urect.h = (fUse8x8Font ? 8 : PAL_FontHeight()) + (fShadow ? 1 : 0);
@@ -1023,13 +1059,13 @@ PAL_DrawText(
       // Draw the character
       //
 	  int char_width = fUse8x8Font ? 8 : PAL_CharWidth(*lpszText);
-
+	  
       if (fShadow)
       {
-		  PAL_DrawCharOnSurface(*lpszText, gpScreen, PAL_XY(rect.x + 1, rect.y + 1), 0, fUse8x8Font);
-		  PAL_DrawCharOnSurface(*lpszText, gpScreen, PAL_XY(rect.x + 1, rect.y), 0, fUse8x8Font);
+		  PAL_DrawCharOnSurface(*lpszText, screen, PAL_XY(rect.x + 1, rect.y + 1), 0, fUse8x8Font);
+		  PAL_DrawCharOnSurface(*lpszText, screen, PAL_XY(rect.x + 1, rect.y), 0, fUse8x8Font);
       }
-	  PAL_DrawCharOnSurface(*lpszText++, gpScreen, PAL_XY(rect.x, rect.y), bColor, fUse8x8Font);
+	  PAL_DrawCharOnSurface(*lpszText++, screen, PAL_XY(rect.x, rect.y), bColor, fUse8x8Font);
 	  rect.x += char_width; urect.w += char_width;
    }
 
@@ -1043,7 +1079,9 @@ PAL_DrawText(
       {
          urect.w = 320 - urect.x;
       }
+	  
       VIDEO_UpdateScreen(&urect);
+	  gDraw240 = Draw240;
    }
 }
 
@@ -1135,6 +1173,7 @@ PAL_StartDialogWithOffset(
 
    if (fPlayingRNG && iNumCharFace)
    {
+	   if (gpScreen240) gDraw240 = TRUE;
       VIDEO_BackupScreen(gpScreen);
       g_TextLib.fPlayingRNG = TRUE;
    }
@@ -1270,6 +1309,8 @@ PAL_DialogWaitForKeyWithMaximumSeconds(
 
    PAL_ClearKeyState();
 
+   gpGlobals->dwUI_Game |= 1;
+
    while (TRUE)
    {
       UTIL_Delay(100);
@@ -1300,6 +1341,8 @@ PAL_DialogWaitForKeyWithMaximumSeconds(
          break;
       }
    }
+
+   gpGlobals->dwUI_Game &= (0xffffffff - 1);
 
    if (g_TextLib.bDialogPosition != kDialogCenterWindow &&
       g_TextLib.bDialogPosition != kDialogCenter)
@@ -1497,7 +1540,7 @@ PAL_ShowDialogText(
 --*/
 {
    SDL_Rect        rect;
-   int             x, y;
+   int             x, y, y240;
 
    PAL_ClearKeyState();
    g_TextLib.bIcon = 0;
@@ -1518,12 +1561,19 @@ PAL_ShowDialogText(
       //
       PAL_DialogWaitForKey();
       g_TextLib.nCurrentDialogLine = 0;
+	  if (gpScreen240) gDraw240 = TRUE;
       VIDEO_RestoreScreen(gpScreen);
       VIDEO_UpdateScreen(NULL);
    }
 
    x = PAL_X(g_TextLib.posDialogText);
    y = PAL_Y(g_TextLib.posDialogText) + g_TextLib.nCurrentDialogLine * 18;
+
+   if (gpScreen240)
+   {
+	   gDraw240 = TRUE;
+		y240 = y + (int)((float)y*0.2f);
+   }
 
    if (g_TextLib.bDialogPosition == kDialogCenterWindow)
    {
@@ -1541,7 +1591,7 @@ PAL_ShowDialogText(
          PAL_POS    pos;
          LPBOX      lpBox;
 		 int        i, w = wcslen(lpszText), len = 0;
-
+		 if (gpScreen240) gDraw240 = TRUE;
 		 for (i = 0; i < w; i++)
             len += PAL_CharWidth(lpszText[i]) >> 3;
          //
@@ -1587,6 +1637,7 @@ PAL_ShowDialogText(
          //
          // name of character
          //
+		  if (gpScreen240) gDraw240 = TRUE;
          PAL_DrawText(lpszText, g_TextLib.posDialogTitle, FONT_COLOR_CYAN_ALT, TRUE, TRUE, FALSE);
       }
       else
@@ -1596,9 +1647,10 @@ PAL_ShowDialogText(
             //
             // Save the screen before we show the first line of dialog
             //
+			 if (gpScreen240) gDraw240 = TRUE;
             VIDEO_BackupScreen(gpScreen);
          }
-         
+		 if (gpScreen240) gDraw240 = TRUE;
          x = TEXT_DisplayText(lpszText, x, y, FALSE);
 
 		 // and update the full screen at once after all texts are drawn
@@ -1646,6 +1698,11 @@ PAL_ClearDialog(
       g_TextLib.bCurrentFontColor = FONT_COLOR_DEFAULT;
       g_TextLib.bDialogPosition = kDialogUpper;
    }
+   if (gpScreen240 != NULL)
+   {
+	   memset(gpScreen240->pixels, 1, 320 * 240);
+	   memset(gpScreenReal240->pixels, 0, 320 * 240 * 4);
+   }
 }
 
 VOID
@@ -1679,6 +1736,7 @@ PAL_EndDialog(
    g_TextLib.bDialogPosition = kDialogUpper;
    g_TextLib.fUserSkip = FALSE;
    g_TextLib.fPlayingRNG = FALSE;
+   VIDEO_Clean240();
 }
 
 BOOL

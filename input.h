@@ -95,6 +95,17 @@ PAL_RegisterInputFilter(
    void (*shutdown_filter)()
 );
 
+VOID
+PAL_KeyDown(
+	INT         key,
+	BOOL        fRepeat
+);
+
+VOID
+PAL_KeyUp(
+	INT         key
+);
+
 extern volatile PALINPUTSTATE g_InputState;
 
 extern BOOL g_fUseJoystick;

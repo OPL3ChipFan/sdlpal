@@ -1,7 +1,7 @@
 /* -*- mode: c; tab-width: 4; c-basic-offset: 4; c-file-style: "linux" -*- */
 //
 // Copyright (c) 2009-2011, Wei Mingzhi <whistler_wmz@users.sf.net>.
-// Copyright (c) 2011-2018, SDLPAL development team.
+// Copyright (c) 2011-2019, SDLPAL development team.
 // All rights reserved.
 //
 // This file is part of SDLPAL.
@@ -61,6 +61,7 @@
 #define strtok_r strtok_s
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
+#define wcsdup _wcsdup
 
 PAL_C_LINKAGE char* strcasestr(const char *, const char *);
 #define PAL_NEED_STRCASESTR 1
