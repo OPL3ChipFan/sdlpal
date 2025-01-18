@@ -23,10 +23,25 @@
 #include "main.h"
 #include <setjmp.h>
 
+
+#include <tamtypes.h>
+#include <kernel.h>
+#include <sifrpc.h>
+#include <loadfile.h>
+#include <stdio.h>
+#include <string.h>
+#include <malloc.h>
+#include <iopcontrol.h>
+#include <sbv_patches.h>
+#include <stdbool.h>
+#include <debug.h>
+#include <ps2_all_drivers.h>
+
 #if defined(PAL_HAS_GIT_REVISION)
 # undef PAL_GIT_REVISION
 # include "generated.h"
 #endif
+
 
 static jmp_buf g_exit_jmp_buf;
 static int g_exit_code = 0;
@@ -377,7 +392,6 @@ PAL_SplashScreen(
 
       PAL_RLEBlitToSurface(lpBitmapTitle, gpScreen, PAL_XY(255, 10));
       VIDEO_UpdateScreen(NULL);
-
       //
       // Check for keypress...
       //
@@ -487,23 +501,99 @@ main(
    }
 #endif
 
-#if !defined(UNIT_TEST) || defined(UNIT_TEST_GAME_INIT)
-   //
+unsigned char* filebuffer = NULL;
+
+init_scr();
+scr_printf("Hello, world!\n");
+scr_printf("\n\nSDLPal PS2\n\n");
+scr_printf("Running main...\n");
+
+ char cwd[PATH_MAX];
+if (getcwd(cwd, sizeof(cwd)) != NULL) {
+       scr_printf("Current working dir: %s\n", cwd);
+   } else {
+       scr_printf("getcwd() error!\n");
+       return 1;
+   }
+
+//chdir("cdfs:");
+if (getcwd(cwd, sizeof(cwd)) != NULL) {
+       scr_printf("Dir Switched.Current working dir: %s\n", cwd);
+
+   } else {
+       scr_printf("getcwd() error!\n");
+       return 1;
+   }
+//reset_IOP();
+//
+    SifInitRpc(0);
+#if !defined(DEBUG) || defined(BUILD_FOR_PCSX2)
+    /* Comment this line if you don't wanna debug the output */
+    while (!SifIopReset(NULL, 0)) {};
+#endif
+
+    while (!SifIopSync()) {};
+    SifInitRpc(0);
+    sbv_patch_enable_lmb();
+    sbv_patch_disable_prefix_check();
+
+//    init_drivers();
+    
+    init_fileXio_driver();
+    init_memcard_driver(true);
+    init_usb_driver(true);
+    init_cdfs_driver();
+    init_joystick_driver(true);
+    init_audio_driver();
+    init_poweroff_driver();
+    init_hdd_driver(true, true);
+
+scr_printf("All drivers initied!\n");
+
+    FILE* File = fopen("FBP.MKF", "r");
+
+    if (File == NULL)
+    {
+        scr_printf("Failed to load CD file\n");
+    }else{
+
+    //Get filesize //
+    fseek(File, 0, SEEK_END);
+    int FileSize = (int)ftell(File);
+    fseek(File, 0, SEEK_SET);
+
+    if (!(filebuffer = malloc(FileSize)))
+    {
+        fclose(File);
+
+    }
+
+    scr_printf("File loading test OK! FileSize = %d\n", FileSize);
+    if (!(fread(filebuffer, FileSize, 1, File)))
+    {
+        fclose(File);
+        scr_printf("Error: Cannot read file\n");
+        free(filebuffer);
+    }
+    }
+
    // Initialize SDL
    //
    if (SDL_Init(PAL_SDL_INIT_FLAGS) == -1)
    {
 	   TerminateOnError("Could not initialize SDL: %s.\n", SDL_GetError());
    }
-
+scr_printf("Loading config...\n");
    PAL_LoadConfig(TRUE);
-
+scr_printf("Config loaded!\n");
+	
    //
    // Platform-specific initialization
    //
+ scr_printf("Platform init...\n");
    if (UTIL_Platform_Init(argc, argv) != 0)
 	   return -1;
-
+scr_printf("OK!\n");
    //
    // Should launch setting?
    // Generally, the condition should never be TRUE as the UTIL_Platform_Init is assumed
@@ -520,12 +610,14 @@ main(
    //
    if (gConfig.pszLogFile)
 	   UTIL_LogAddOutputCallback(UTIL_LogToFile, gConfig.iLogLevel);
-
+SDL_Init(PAL_SDL_INIT_FLAGS);
    //
    // Initialize everything
    //
+ scr_printf("PAL Init...\n");
    PAL_Init();
-#endif
+   scr_printf("OK!\n");
+   sleep(1);
 
 #if !defined(UNIT_TEST)
    //
@@ -533,7 +625,7 @@ main(
    //
    PAL_TrademarkScreen();
    PAL_SplashScreen();
-
+SDL_Init(PAL_SDL_INIT_FLAGS);
    //
    // Run the main game routine
    //

@@ -475,6 +475,8 @@ VIDEO_UpdateScreen(
    short           screenRealHeight = gpScreenReal->h;
    short           screenRealY = 0;
 
+   input_ps2_filter();
+
 #if SDL_VERSION_ATLEAST(2,0,0)
    if (g_bRenderPaused)
    {

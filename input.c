@@ -90,7 +90,6 @@ static const int g_KeyMap[][2] = {
    { SDLK_f,         kKeyForce },
    { SDLK_s,         kKeyStatus }
 };
-
 static VOID
 PAL_KeyDown(
    INT         key,
@@ -1075,7 +1074,14 @@ PAL_ClearKeyState(
 
 --*/
 {
-   g_InputState.dwKeyPress = 0;
+  g_InputState.dwKeyPress = 0;
+/*if (g_InputState.dwKeyPress == 0){
+g_InputState.dwKeyPress = kKeySearch;
+}else if(g_InputState.dwKeyPress == kKeySearch){
+g_InputState.dwKeyPress = kKeyDown;
+}else if(g_InputState.dwKeyPress == kKeyDown){
+	g_InputState.dwKeyPress = 0;
+}*/
 }
 
 VOID

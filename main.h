@@ -53,6 +53,8 @@
 #include "midi.h"
 #include "aviplay.h"
 
+int input_ps2_filter();
+
 VOID
 PAL_Shutdown(
    int exit_code

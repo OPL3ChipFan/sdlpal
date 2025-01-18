@@ -21,7 +21,7 @@
 //
 
 #include "main.h"
-
+int counter =0;
 static VOID
 PAL_GameStart(
    VOID
@@ -91,6 +91,7 @@ PAL_GameMain(
    // Run the main game loop.
    //
    dwTime = SDL_GetTicks();
+   SDL_Init(PAL_SDL_INIT_FLAGS);
    while (TRUE)
    {
       //
@@ -121,6 +122,8 @@ PAL_GameMain(
       // Set the time of the next frame.
       //
       dwTime = SDL_GetTicks() + FRAME_TIME;
+     //     g_InputState.dwKeyPress = kKeySearch
+   input_ps2_filter();
 
       //
       // Run the main frame routine.
