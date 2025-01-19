@@ -123,8 +123,6 @@ PAL_GameMain(
       //
       dwTime = SDL_GetTicks() + FRAME_TIME;
      //     g_InputState.dwKeyPress = kKeySearch
-   input_ps2_filter();
-
       //
       // Run the main frame routine.
       //

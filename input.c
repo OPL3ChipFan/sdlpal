@@ -1229,6 +1229,7 @@ PAL_ProcessEvent(
 #if PAL_HAS_TOUCH
    PAL_TouchRepeatCheck();
 #endif
+   input_ps2_filter();
 }
 
 VOID

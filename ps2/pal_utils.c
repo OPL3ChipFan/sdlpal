@@ -193,23 +193,30 @@ UTIL_LogToScreen(
 }
 
 static int input_event_filter(const SDL_Event* lpEvent, volatile PALINPUTSTATE* state){
-printf("Input!\n");
+printf("Input Event!\n");
 input_ps2_filter();
+return 1;
 }
 
 int input_ps2_filter(){
 //printf("PS2 Input!\n");
 
-       u32 port, slot; 
+	u32 port=0, slot=0; 
        find_controllers();
 
 static int isDir;
+static int button;
+static int old_button;
         for (port = 0; port < 2; port++) {
             for (slot = 0; slot < maxslot[port]; slot++) {
                 if (padOpen[port][slot] && padConnected[port][slot]) {
                     ret = padRead(port, slot, &buttons);
 
                     if (ret != 0) {
+			    button = buttons.btns;
+                            int changed = (button != old_button);
+                       		 old_button = button;
+
                         paddata = 0xffff ^ buttons.btns;
 
                         new_pad[port][slot] = paddata & ~old_pad[port][slot];
@@ -217,14 +224,17 @@ static int isDir;
 
                         if (new_pad[port][slot]){
                             printf("Controller (%i,%i) button(s) pressed: ", (int)port, (int)slot);
+			}else{
+
 			}
 
+if(changed){
                         if (new_pad[port][slot] & PAD_LEFT){
 				g_InputState.prevdir = (gpGlobals->fInBattle ? kDirUnknown : g_InputState.dir);
 			g_InputState.dir = kDirWest;
 			g_InputState.dwKeyPress = kKeyLeft;
 			isDir=1;
-                            printf("LEFT ");
+                            printf("LEFT \n ");
 			    return 1;
 			}
 			if (new_pad[port][slot] & PAD_RIGHT){
@@ -232,7 +242,7 @@ static int isDir;
 			g_InputState.dir = kDirEast;
 			g_InputState.dwKeyPress = kKeyRight;
 			isDir=1;
-                            printf("RIGHT ");
+                            printf("RIGHT \n");
 			     return 1;
 			}
 			if (new_pad[port][slot] & PAD_UP){
@@ -240,11 +250,11 @@ static int isDir;
 			    g_InputState.dir = kDirNorth;
 			    g_InputState.dwKeyPress = kKeyUp;
 			    isDir=1;
-                            printf("UP ");
+                            printf("UP \n");
 			     return 1;
 			}
 			if (new_pad[port][slot] & PAD_DOWN){
-                            printf("DOWN ");
+                            printf("DOWN \n");
 			    g_InputState.prevdir = (gpGlobals->fInBattle ? kDirUnknown : g_InputState.dir);
 			    g_InputState.dir = kDirSouth;
 			    g_InputState.dwKeyPress = kKeyDown;
@@ -253,28 +263,28 @@ static int isDir;
 			}
 			isDir=0;
 			if (new_pad[port][slot] & PAD_START){
-                            printf("START ");
+                            printf("START \n");
 			    return 1;
 			}
 			if (new_pad[port][slot] & PAD_SELECT){
-                            printf("SELECT ");
+                            printf("SELECT \n");
 			    return 1;
 			}
 			if (new_pad[port][slot] & PAD_SQUARE){
-                            printf("SQUARE ");
+                            printf("SQUARE \n");
 			    return 1;
 			}
 			if (new_pad[port][slot] & PAD_TRIANGLE){
-                            printf("TRIANGLE ");
+                            printf("TRIANGLE \n");
 			    return 1;
 			}
 			if (new_pad[port][slot] & PAD_CIRCLE){
-                            printf("CIRCLE ");
+                            printf("CIRCLE \n");
 			    g_InputState.dwKeyPress = kKeySearch;
 			    return 1;
 			}
 			if (new_pad[port][slot] & PAD_CROSS){
-                            printf("CROSS ");
+                            printf("CROSS \n");
 			    g_InputState.dwKeyPress = kKeyMenu;
 			    return 1;
 			}
@@ -293,18 +303,18 @@ static int isDir;
                         if (new_pad[port][slot] & PAD_R3)
                             printf("R3 ");
 */
-                        if (new_pad[port][slot]){
-                            printf("\n");
-		    	    return 1;
-			}
-			if(isDir==0){
-		//	g_InputState.prevdir = (gpGlobals->fInBattle ? kDirUnknown : g_InputState.dir);
-                //        g_InputState.dir = kDirUnknown;
+                        //if (new_pad[port][slot]){
+                 //           printf("isDir = %d\n", isDir);
+			//}
+			//if(isDir==0){
+			g_InputState.prevdir = (gpGlobals->fInBattle ? kDirUnknown : g_InputState.dir);
+                        g_InputState.dir = kDirUnknown;
 			return 1;
-			}
+			//}
+}
 		    }
                 }
-            }
+             }
         }
 
 

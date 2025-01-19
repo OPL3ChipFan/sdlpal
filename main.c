@@ -610,22 +610,20 @@ scr_printf("OK!\n");
    //
    if (gConfig.pszLogFile)
 	   UTIL_LogAddOutputCallback(UTIL_LogToFile, gConfig.iLogLevel);
-SDL_Init(PAL_SDL_INIT_FLAGS);
    //
    // Initialize everything
    //
  scr_printf("PAL Init...\n");
    PAL_Init();
    scr_printf("OK!\n");
-   sleep(1);
-
+   sleep(3);
+ ChangeThreadPriority(GetThreadId(), 72);
 #if !defined(UNIT_TEST)
    //
    // Show the trademark screen and splash screen
    //
    PAL_TrademarkScreen();
    PAL_SplashScreen();
-SDL_Init(PAL_SDL_INIT_FLAGS);
    //
    // Run the main game routine
    //
