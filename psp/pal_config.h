@@ -56,3 +56,22 @@
 #endif
 
 #endif
+
+
+# define fopen PSP_fopen
+# define fread PSP_fread
+# define fwrite PSP_fwrite
+# define feof PSP_feof
+# define fgetc PSP_fgetc
+# define fputc PSP_fputc
+# define fgets PSP_fgets
+# define fputs PSP_fputs
+# define ftell PSP_ftell
+# define fseek PSP_fseek
+# define fgetpos PSP_fgetpos
+# define fsetpos PSP_fsetpos
+# define fclose PSP_fclose
+
+
+
+

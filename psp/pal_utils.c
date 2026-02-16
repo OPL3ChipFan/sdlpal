@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <string.h>
+
 #include "native_mp3.h"
 
 #define __FILENO_MAX 1024
@@ -98,6 +100,271 @@ UTIL_IsAbsolutePath(
 {
 	return FALSE;
 }
+
+
+
+# undef fopen 
+# undef fread 
+# undef fwrite 
+# undef feof 
+# undef fgetc 
+# undef fputc 
+# undef fgets 
+# undef fputs 
+# undef ftell 
+# undef fseek 
+# undef fgetpos 
+# undef fsetpos 
+# undef fclose 
+
+typedef struct {
+	char *filename;
+	char *mode;
+	long curpos;
+	int inuse; 
+	int ioeof;
+	FILE *fp;
+} PSP_fpmap_type;
+
+PSP_fpmap_type PSP_fpmap[32];
+
+
+FILE *PSP_fopen(const char *file, const char *mode)
+{
+	FILE *realfp;
+
+	for (int i = (16+3); i < 32; i++){
+
+		if (PSP_fpmap[i].inuse == 0){
+			realfp = fopen(file, mode);
+
+			if (realfp > 0){
+				PSP_fpmap[i].fp = (FILE*)malloc(sizeof(FILE));
+				memcpy(PSP_fpmap[i].fp, realfp, sizeof(FILE));
+
+				PSP_fpmap[i].filename = strdup(file);
+				PSP_fpmap[i].mode = strdup(mode);
+				PSP_fpmap[i].curpos = ftell(realfp);
+				PSP_fpmap[i].ioeof = feof(realfp);
+
+				PSP_fpmap[i].fp->_file = i;
+				PSP_fpmap[i].inuse = 1;
+
+				fclose(realfp);
+
+				//UTIL_LogOutput(LOGLEVEL_INFO, "PSP_fopen =  0x%x \n", PSP_fpmap[i].curpos);
+
+				return PSP_fpmap[i].fp;
+
+			}else{	
+				return NULL;
+			}
+
+			break;
+		}
+
+	}
+}
+
+size_t PSP_fread(void *restrict buf, size_t size, size_t count, FILE *restrict fp)
+{
+	FILE *realfp;
+	size_t returnvalue;
+	int i = fp->_file;
+
+
+//UTIL_LogOutput(LOGLEVEL_INFO, "HERE. \n");
+	realfp = fopen(PSP_fpmap[i].filename, PSP_fpmap[i].mode);
+//UTIL_LogOutput(LOGLEVEL_INFO, "HERE 1. \n");
+	fseek(realfp, PSP_fpmap[i].curpos, SEEK_SET);
+//UTIL_LogOutput(LOGLEVEL_INFO, "Real ftell = 0x%x \n", ftell(realfp));
+
+
+	returnvalue = fread(buf, size, count, realfp);
+
+	PSP_fpmap[i].ioeof = feof(realfp);
+	PSP_fpmap[i].curpos = ftell(realfp);
+
+//UTIL_LogOutput(LOGLEVEL_INFO, "HERE 3. \n");
+	fclose(realfp);
+	return returnvalue;
+}
+
+int PSP_feof(FILE *restrict fp)
+{
+	int i = fp->_file;
+	return PSP_fpmap[i].ioeof;
+}
+
+
+int PSP_fgetc(FILE *restrict fp)
+{
+	FILE *realfp;
+	int returnvalue;
+	int i = fp->_file;
+
+	realfp = fopen(PSP_fpmap[i].filename, PSP_fpmap[i].mode);
+	fseek(realfp, PSP_fpmap[i].curpos, SEEK_SET);
+	returnvalue = fgetc(realfp);
+	PSP_fpmap[i].ioeof = feof(realfp);
+	PSP_fpmap[i].curpos = ftell(realfp);
+
+	fclose(realfp);
+
+	return returnvalue;
+}
+
+int PSP_fputc(int c, FILE *restrict fp)
+{
+	FILE *realfp;
+	int returnvalue;
+	int i = fp->_file;
+
+	realfp = fopen(PSP_fpmap[i].filename, PSP_fpmap[i].mode);
+	fseek(realfp, PSP_fpmap[i].curpos, SEEK_SET);
+	returnvalue = fputc(c, realfp);
+	PSP_fpmap[i].ioeof = feof(realfp);
+	PSP_fpmap[i].curpos = ftell(realfp);
+
+	fclose(realfp);
+
+	return returnvalue;
+}
+
+char *PSP_fgets(char *s, int n, FILE *restrict fp)
+{
+	FILE *realfp;
+	char *returnvalue;
+	int i = fp->_file;
+
+	realfp = fopen(PSP_fpmap[i].filename, PSP_fpmap[i].mode);
+	fseek(realfp, PSP_fpmap[i].curpos, SEEK_SET);
+	returnvalue = fgets(s, n, realfp);
+	PSP_fpmap[i].ioeof = feof(realfp);
+	PSP_fpmap[i].curpos = ftell(realfp);
+
+	fclose(realfp);
+
+	return returnvalue;
+}
+
+int PSP_fputs(char *s, FILE *restrict fp)
+{
+	FILE *realfp;
+	int returnvalue;
+	int i = fp->_file;
+
+	realfp = fopen(PSP_fpmap[i].filename, PSP_fpmap[i].mode);
+	fseek(realfp, PSP_fpmap[i].curpos, SEEK_SET);
+	returnvalue = fputs(s, realfp);
+	PSP_fpmap[i].ioeof = feof(realfp);
+	PSP_fpmap[i].curpos = ftell(realfp);
+
+	fclose(realfp);
+
+	return returnvalue;
+}
+
+size_t PSP_fwrite(void *restrict buf, size_t size, size_t count, FILE *restrict fp)
+{
+	FILE *realfp;
+	size_t returnvalue;
+	int i = fp->_file;
+
+	realfp = fopen(PSP_fpmap[i].filename, PSP_fpmap[i].mode);
+	fseek(realfp, PSP_fpmap[i].curpos, SEEK_SET);
+	returnvalue = fwrite(buf, size, count, realfp);
+	PSP_fpmap[i].ioeof = feof(realfp);
+	PSP_fpmap[i].curpos = ftell(realfp);
+
+	fclose(realfp);
+
+	return returnvalue;
+}
+
+long PSP_ftell(FILE *restrict fp)
+{
+	int i = fp->_file;
+
+	return PSP_fpmap[i].curpos;
+}
+
+int PSP_fseek(FILE *restrict fp, long offset, int whence)
+{
+	FILE *realfp;
+	int returnvalue;
+	int i = fp->_file;
+
+	realfp = fopen(PSP_fpmap[i].filename, PSP_fpmap[i].mode);
+	returnvalue = fseek(realfp, offset, whence);
+	PSP_fpmap[i].ioeof = feof(realfp);
+	PSP_fpmap[i].curpos = ftell(realfp);
+
+	fclose(realfp);
+
+	return returnvalue;
+}
+
+int PSP_fgetpos(FILE *restrict fp, fpos_t *pos)
+{
+	FILE *realfp;
+	int returnvalue;
+	int i = fp->_file;
+
+	realfp = fopen(PSP_fpmap[i].filename, PSP_fpmap[i].mode);
+	returnvalue = fgetpos(realfp, pos);
+	PSP_fpmap[i].ioeof = feof(realfp);
+	PSP_fpmap[i].curpos = ftell(realfp);
+
+	fclose(realfp);
+
+	return returnvalue;
+}
+
+int PSP_fsetpos(FILE *restrict fp, const fpos_t *pos)
+{
+	FILE *realfp;
+	int returnvalue;
+	int i = fp->_file;
+
+	realfp = fopen(PSP_fpmap[i].filename, PSP_fpmap[i].mode);
+	returnvalue = fsetpos(realfp, pos);
+	PSP_fpmap[i].ioeof = feof(realfp);
+	PSP_fpmap[i].curpos = ftell(realfp);
+
+	fclose(realfp);
+
+	return returnvalue;
+}
+
+int PSP_fclose(FILE * fp)
+{
+	if (fp == NULL){
+		return -1;
+	}
+
+	int i = fp->_file;
+
+	if (PSP_fpmap[i].inuse == 0){
+		return -1;
+	}
+
+	free(PSP_fpmap[i].filename);
+	PSP_fpmap[i].filename = NULL;
+
+	free(PSP_fpmap[i].mode);
+	PSP_fpmap[i].mode = NULL;
+	
+	PSP_fpmap[i].curpos = 0;
+
+	free(PSP_fpmap[i].fp);
+	PSP_fpmap[i].fp = NULL;
+
+	PSP_fpmap[i].inuse = 0;
+
+	return 0;
+}
+
 
 int PSP_resume_callback(int unknown, int pwrflags, void* common)
 {
@@ -483,7 +750,129 @@ UTIL_Platform_Init(
 	}
 	*/
 	sceUtilityLoadModule(PSP_MODULE_AV_MP3);
-	
+
+
+
+
+    UTIL_LogOutput(LOGLEVEL_INFO, "PSP file IO layer TEST: \n");
+    BYTE a_buf[256];
+    BYTE b_buf[256];
+    //FILE *fpa=fopen("fbp.mkf", "r");
+    //FILE *fpb=PSP_fopen("fbp.mkf", "r");
+    FILE *fpa=fopen("mp3/01.mp3", "r");
+    FILE *fpb=PSP_fopen("mp3/01.mp3", "r");
+    fseek(fpa,2,SEEK_SET);
+    PSP_fseek(fpb,2,SEEK_SET);
+    fread(a_buf,256,1,fpa);
+    PSP_fread(b_buf,256,1,fpb);
+	UTIL_LogOutput(LOGLEVEL_INFO, "PALXEX's TEST Round 1: \n");
+	UTIL_LogOutput(LOGLEVEL_INFO, "fread =  0x%x \n", a_buf[0]);
+	UTIL_LogOutput(LOGLEVEL_INFO, "PSP_fread =  0x%x \n", b_buf[0]);
+	UTIL_LogOutput(LOGLEVEL_INFO, "memcmp =  0x%x \n", memcmp(a_buf,b_buf,256));
+
+    fclose(fpa);
+    PSP_fclose(fpb);
+    fpa=fopen("fbp.mkf", "r");
+    fpb=PSP_fopen("fbp.mkf", "r");
+
+	//fseek(fpa,1,SEEK_SET);
+    //PSP_fseek(fpb,1,SEEK_SET);
+    fread(a_buf,256,1,fpa);
+    PSP_fread(b_buf,256,1,fpb);
+	UTIL_LogOutput(LOGLEVEL_INFO, "PALXEX's TEST Round 2: \n");
+	UTIL_LogOutput(LOGLEVEL_INFO, "fread =  0x%x \n", a_buf[0]);
+	UTIL_LogOutput(LOGLEVEL_INFO, "PSP_fread =  0x%x \n", b_buf[0]);
+	UTIL_LogOutput(LOGLEVEL_INFO, "memcmp =  0x%x \n", memcmp(a_buf,b_buf,256));
+
+    fclose(fpa);
+    PSP_fclose(fpb);
+    fpa=fopen("fbp.mkf", "r");
+    fpb=PSP_fopen("fbp.mkf", "r");
+
+    fseek(fpa,2,SEEK_SET);
+    PSP_fseek(fpb,2,SEEK_SET);
+    fread(a_buf,256,1,fpa);
+    PSP_fread(b_buf,256,1,fpb);
+	UTIL_LogOutput(LOGLEVEL_INFO, "PALXEX's TEST Round 3: \n");
+	UTIL_LogOutput(LOGLEVEL_INFO, "fread =  0x%x \n", a_buf[0]);
+	UTIL_LogOutput(LOGLEVEL_INFO, "PSP_fread =  0x%x \n", b_buf[0]);
+	UTIL_LogOutput(LOGLEVEL_INFO, "memcmp =  0x%x \n", memcmp(a_buf,b_buf,256));
+
+    fclose(fpa);
+    PSP_fclose(fpb);
+    
+
+
+sceKernelDelayThread(1000000);
+
+/*
+//UTIL_LogOutput(LOGLEVEL_INFO, "PSP_fopen start. \n");
+
+FILE *fp = PSP_fopen("fbp.mkf", "r");
+
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_fp =  0x%x \n", fp->_file);
+
+
+PSP_fseek(fp, 0x100, SEEK_SET);
+
+//UTIL_LogOutput(LOGLEVEL_INFO, "PSP_ftell 1 start. \n");
+
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_tell =  0x%x \n", PSP_ftell(fp));
+
+//UTIL_LogOutput(LOGLEVEL_INFO, "PSP_fread start. \n");
+
+BYTE *char_buf = malloc(sizeof(BYTE));
+
+UTIL_LogOutput(LOGLEVEL_INFO, "malloc =  0x%x \n", char_buf[0]);
+
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_tell =  0x%x \n", PSP_ftell(fp));
+PSP_fread(char_buf, 1, 1, fp);
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_fread 1 =  0x%x \n", char_buf[0]);
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_tell =  0x%x \n", PSP_ftell(fp));
+PSP_fread(char_buf, 1, 1, fp);
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_fread 2 =  0x%x \n", char_buf[0]);
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_tell =  0x%x \n", PSP_ftell(fp));
+
+
+
+PSP_fseek(fp, 0x000, SEEK_SET);
+
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_ftell 2 start. \n");
+
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_tell =  0x%x \n", PSP_ftell(fp));
+
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_fread start. \n");
+
+PSP_fread(char_buf, 1, 1, fp);
+
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_fread =  0x%x \n", char_buf[0]);
+
+
+
+PSP_fseek(fp, 0x100, SEEK_SET);
+
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_ftell 1 start. \n");
+
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_tell =  0x%x \n", PSP_ftell(fp));
+
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_fread start. \n");
+
+PSP_fread(char_buf, 1, 1, fp);
+
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_fread =  0x%x \n", char_buf[0]);
+
+
+
+free(char_buf);
+
+PSP_fclose(fp);
+
+UTIL_LogOutput(LOGLEVEL_INFO, "PSP_close. \n");
+
+sceKernelDelayThread(10000000);
+*/
+
+
 	/*
 	if (status < 0)
 	{
