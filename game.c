@@ -93,6 +93,9 @@ PAL_GameMain(
    dwTime = SDL_GetTicks();
    while (TRUE)
    {
+   while (gamePaused == 1){
+sceKernelDelayThread(1000000);
+   }
       //
       // Do some initialization at game start.
       //

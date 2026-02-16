@@ -33,5 +33,5 @@ PAL_RNGPlay(
    INT           iNumFrames,
    INT           iSpeed
 );
-
+extern volatile int gamePaused;
 #endif

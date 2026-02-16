@@ -409,6 +409,14 @@ PAL_RNGPlay(
 
    for (double iTime = SDL_GetPerformanceCounter(); rng && buf && iStartFrame != iEndFrame; iStartFrame++)
    {
+   
+   
+   
+   while (gamePaused == 1){
+sceKernelDelayThread(1000000);
+   }
+   
+   
 	  iTime += iDelay;
       //
       // Read, decompress and render the frame

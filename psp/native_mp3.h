@@ -31,18 +31,18 @@
 
 #include "../common.h"
 
-SceUID thid;
-int playingNativeMP3;
-int ioread_err;
+extern SceUID thid;
+extern int playingNativeMP3;
+extern int ioread_err;
 
-char MP3filename[PAL_MAX_PATH];
-char monitor_MP3filename[PAL_MAX_PATH];
-int current_floop;
-int current_iMusicVolume;
-char cwd_buff[PAL_MAX_PATH];
+extern char MP3filename[PAL_MAX_PATH];
+extern char monitor_MP3filename[PAL_MAX_PATH];
+extern int current_floop;
+extern int current_iMusicVolume;
+extern char cwd_buff[PAL_MAX_PATH];
 
-void clearFileNameCache(void);
-int playNativeMP3(const char* filename, int fLoop, int iMusicVolume);
-int stopNativeMP3(void);
-int initNativeMP3(void);
-int shutdownNativeMP3(void);
+extern void clearFileNameCache(void);
+extern int playNativeMP3(const char* filename, int fLoop, int iMusicVolume);
+extern int stopNativeMP3(void);
+extern int initNativeMP3(void);
+extern int shutdownNativeMP3(void);

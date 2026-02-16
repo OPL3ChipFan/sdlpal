@@ -85,7 +85,7 @@
 #define FLAGS_AVI_VIDEO_FORMAT 0x02
 #define FLAGS_AVI_AUDIO_FORMAT 0x04
 #define FLAGS_AVI_ALL_HEADERS  0x07
-
+extern volatile int gamePaused;
 typedef struct AVIPlayState
 {
 	SDL_mutex     *selfMutex;
@@ -679,6 +679,10 @@ PAL_PlayAVI(
 
     while (!fEndPlay)
     {
+    
+   while (gamePaused == 1){
+sceKernelDelayThread(1000000);
+   }
 		RIFFChunk *chunk = PAL_ReadDataChunk(fp, avi->lVideoEndPos, buf, len, avi->cvt.len_mult);
 
 		if (chunk == NULL) break;
