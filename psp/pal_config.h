@@ -14,6 +14,9 @@
 # define PAL_HAS_OGG           1
 # define PAL_HAS_OPUS          1
 
+
+# define USE_RIX_MKF_FILE_BUFFER 1
+
 # define PAL_PREFIX            ""
 # define PAL_SAVE_PREFIX       ""
 
@@ -21,7 +24,7 @@
 # define PAL_DEFAULT_WINDOW_HEIGHT  400
 
 # if SDL_VERSION_ATLEAST(2,0,0)
-#  define PAL_VIDEO_INIT_FLAGS  (SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE)
+#  define PAL_VIDEO_INIT_FLAGS  (SDL_WINDOW_SHOWN | (gConfig.fFullScreen ? SDL_WINDOW_FULLSCREEN : 0))
 # else
 #  define PAL_VIDEO_INIT_FLAGS  (SDL_SWSURFACE | (gConfig.fFullScreen ? SDL_FULLSCREEN : 0))
 # endif

@@ -31,15 +31,6 @@
 #include <stdint.h>
 #endif
 
-#ifdef PSP
-
-// A buffer for MUS.MKF was defined in global.c, since FOPEN_MAX of PSP is limited
-extern FILE* musfile;
-extern char* mus_buf;
-extern long mus_numbytes;
-
-#endif
-
 class CrixPlayer: public CPlayer
 {
  public:
@@ -51,7 +42,7 @@ class CrixPlayer: public CPlayer
   bool load(const std::string &filename, const CFileProvider &fp);
   bool update();
   void rewind(int subsong);
-  void rewindReInit(int subsong, bool reinit); /* For seamless continous */
+  void rewindReInit(int subsong, bool reinit); /* For seamless continuous */
   float getrefresh();
   unsigned int getsubsongs();
 
@@ -72,9 +63,12 @@ class CrixPlayer: public CPlayer
   uint32_t *extra_regs;
   uint8_t *extra_vals;
 #endif
+#ifdef USE_RIX_MKF_FILE_BUFFER
+  uint8_t* file_buffer;
+#endif
   FILE *fp;
   int subsongs;
-  uint8_t rix_buf[16384];  /* rix files' f_buffer */
+  uint8_t *rix_buf;  /* rix files' f_buffer */
   uint16_t f_buffer[300];//9C0h-C18h
   uint16_t a0b0_data2[11];
   uint8_t a0b0_data3[18];
@@ -139,4 +133,6 @@ class CrixPlayer: public CPlayer
   uint16_t rix_proc();                   /**/
   void set_new_int();
   void switch_ad_bd(uint16_t);           /**/
+
+  void read_file_to(uint8_t *&);
 };
