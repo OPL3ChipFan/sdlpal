@@ -17,7 +17,16 @@
 
 #include "native_mp3.h"
 
-#include "fdman.h"
+#define __FILENO_MAX 1024
+typedef struct {
+	u_int32_t descriptor;
+	u_int32_t flags;
+	u_int32_t ref_count;
+	char *filename;
+	u_int8_t type;
+} __descriptormap_type;
+
+extern __descriptormap_type *__descriptormap[__FILENO_MAX];
 
 #define	_FOPEN		(-1)	/* from sys/file.h, kernel use only */
 #define	_FREAD		0x0001	/* read enabled */
@@ -68,7 +77,10 @@ static unsigned char old_x = 0, old_y = 0;
 
 int dynamic_freq = 0;
 
-long fileseekpoints[32];
+SceOff fileseekpoints[32];
+//volatile SceOff tempRNGpos;
+
+volatile int gamePaused = 0;
 
 BOOL
 UTIL_GetScreenSize(
@@ -89,47 +101,63 @@ UTIL_IsAbsolutePath(
 
 int PSP_resume_callback(int unknown, int pwrflags, void* common)
 {
+        
+        //volatile static SceOff tempRNGpos;
+        
 	scePowerLock(0);
 	UTIL_LogOutput(LOGLEVEL_INFO, "PSP_resume_callback pwrflags =  0x%x \n", pwrflags);
 	if (pwrflags & PSP_POWER_CB_RESUME_COMPLETE)
 	{
+gamePaused = 0;
 		UTIL_LogOutput(LOGLEVEL_INFO, "PSP_POWER_CB_RESUME_COMPLETE \n");
 		// On certian PSP-1000 system, file handles will be invalid after PSP_POWER_CB_RESUME_COMPLETE 
 
 		for (int i = 3; i < 13; i++) {
-			if (__psp_descriptormap[i]) {
+			if (__descriptormap[i]) {
 
 				int scefd;
 				int sce_flags;
 
-				int seekpos;
-				UTIL_LogOutput(LOGLEVEL_INFO, "%s seekpoint = 0x%x \n", __psp_descriptormap[i]->filename, fileseekpoints[i]);
+				static volatile SceOff seekpos;
+				//UTIL_LogOutput(LOGLEVEL_INFO, "%s seekpoint = 0x%x \n", __descriptormap[i]->filename, fileseekpoints[i]);
 				
 				/* O_RDONLY starts at 0, where PSP_O_RDONLY starts at 1, so remap the read/write
 				   flags by adding 1. */
-				sce_flags = (__psp_descriptormap[i]->flags & O_ACCMODE) + 1;
+				sce_flags = (__descriptormap[i]->flags & O_ACCMODE) + 1;
 
 				/* Translate standard open flags into the flags understood by the PSP kernel. */
-				if (__psp_descriptormap[i]->flags & O_APPEND) {
+				if (__descriptormap[i]->flags & O_APPEND) {
 					sce_flags |= PSP_O_APPEND;
 				}
-				if (__psp_descriptormap[i]->flags & O_CREAT) {
+				if (__descriptormap[i]->flags & O_CREAT) {
 					sce_flags |= PSP_O_CREAT;
 				}
-				if (__psp_descriptormap[i]->flags & O_TRUNC) {
+				if (__descriptormap[i]->flags & O_TRUNC) {
 					sce_flags |= PSP_O_TRUNC;
 				}
-				if (__psp_descriptormap[i]->flags & O_EXCL) {
+				if (__descriptormap[i]->flags & O_EXCL) {
 					sce_flags |= PSP_O_EXCL;
 				}
-				if (__psp_descriptormap[i]->flags & O_NONBLOCK) {
+				if (__descriptormap[i]->flags & O_NONBLOCK) {
 					sce_flags |= PSP_O_NBLOCK;
 				}
 
-				scefd = sceIoOpen(__psp_descriptormap[i]->filename, sce_flags, 0777);
-				__psp_descriptormap[i]->sce_descriptor = scefd;
-				seekpos = sceIoLseek(__psp_descriptormap[i]->sce_descriptor, fileseekpoints[i], SEEK_SET);
-				UTIL_LogOutput(LOGLEVEL_INFO, "seekpos = 0x%x \n", seekpos);
+				scefd = sceIoOpen(__descriptormap[i]->filename, sce_flags, 0777);
+				__descriptormap[i]->descriptor = scefd;
+				
+				//UTIL_LogOutput(LOGLEVEL_INFO, "RESUME fileseekpoint = 0x%lld \n", fileseekpoints[i]);
+				UTIL_LogOutput(LOGLEVEL_INFO, "RESUME fileseekpoints[%d] = 0x%llX \n", i, fileseekpoints[i]);
+				//UTIL_LogOutput(LOGLEVEL_INFO, "RESUME 1 tempRNGpos = 0x%lld \n", tempRNGpos);
+				
+				seekpos = sceIoLseek(__descriptormap[i]->descriptor, fileseekpoints[i], SEEK_SET);
+				UTIL_LogOutput(LOGLEVEL_INFO, "seekpos = 0x%llX \n", sceIoLseek(__descriptormap[i]->descriptor, seekpos, SEEK_SET));
+				
+				//UTIL_LogOutput(LOGLEVEL_INFO, "2 tempRNGpos = 0x%lld \n", tempRNGpos);
+
+				//seekpos = sceIoLseek(__descriptormap[i]->descriptor, 0, SEEK_CUR);
+				//UTIL_LogOutput(LOGLEVEL_INFO, "sceIoLseek = 0x%lld \n", sceIoLseek(__descriptormap[i]->descriptor, 0, SEEK_CUR));
+				
+				//UTIL_LogOutput(LOGLEVEL_INFO, "3 tempRNGpos = 0x%lld \n", tempRNGpos);
 			}
 		}
 		UTIL_LogOutput(LOGLEVEL_INFO, "RESUME MP3filename = %s \n", MP3filename);
@@ -161,22 +189,26 @@ int PSP_resume_callback(int unknown, int pwrflags, void* common)
 		fclose(gpGlobals->f.fpSSS);
 		gpGlobals->f.fpSSS = UTIL_OpenRequiredFile("sss.mkf");
 		*/
-	}else if (pwrflags & PSP_POWER_CB_POWER_SWITCH || pwrflags & PSP_POWER_CB_SUSPENDING) {
-
+	}else if (pwrflags & PSP_POWER_CB_POWER_SWITCH) {
+// || pwrflags & PSP_POWER_CB_SUSPENDING
 		stopNativeMP3();
+gamePaused=1;
 		sceKernelDelayThread(1000000);
 		for (int i = 3; i < 13; i++) {
-			if (__psp_descriptormap[i]) {
-				UTIL_LogOutput(LOGLEVEL_INFO, "__psp_descriptormap[%d]->filename =  %s \n", i, __psp_descriptormap[i]->filename);
+			if (__descriptormap[i]) {
+				UTIL_LogOutput(LOGLEVEL_INFO, "__descriptormap[%d]->filename =  %s \n", i, __descriptormap[i]->filename);
 			}
 		}
 		for (int i = 3; i < 13; i++) {
 			UTIL_LogOutput(LOGLEVEL_INFO, "PSP_POWER_CB_SUSPENDING i = %d \n", i);
-			if (__psp_descriptormap[i]) {
+			if (__descriptormap[i]) {
 				// UTIL_LogOutput(LOGLEVEL_INFO, "ftell(%d) = %d \n", i, ftell(i));
-				fileseekpoints[i] = sceIoLseek(__psp_descriptormap[i]->sce_descriptor, 0, SEEK_CUR);
-				UTIL_LogOutput(LOGLEVEL_INFO, "fileseekpoints[%d] = 0x%x \n", i, fileseekpoints[i]);
-				sceIoClose(__psp_descriptormap[i]->sce_descriptor);
+				fileseekpoints[i] = sceIoLseek(__descriptormap[i]->descriptor, 0, SEEK_CUR);
+				//tempRNGpos = fileseekpoints[i];
+				UTIL_LogOutput(LOGLEVEL_INFO, "__descriptormap[%d]->filename =  %s \n", i, __descriptormap[i]->filename);
+				UTIL_LogOutput(LOGLEVEL_INFO, "fileseekpoints[%d] = 0x%llx \n", i, fileseekpoints[i]);
+				//UTIL_LogOutput(LOGLEVEL_INFO, "tempRNGpos SUSPENDING = 0x%lld \n", tempRNGpos);
+				sceIoClose(__descriptormap[i]->descriptor);
 			}
 		}
 	}
@@ -399,8 +431,8 @@ static int input_event_filter(const SDL_Event* lpEvent, volatile PALINPUTSTATE* 
 void screenPrintf(char* s) {
 	printf("MESSAGE: \n");
 	for (int i = 3; i < 13; i++) {
-		if (__psp_descriptormap[i]) {
-			printf("__psp_descriptormap[%d]->filename =  %s \n", i, __psp_descriptormap[i]->filename);
+		if (__descriptormap[i]) {
+			printf("__descriptormap[%d]->filename =  %s \n", i, __descriptormap[i]->filename);
 		}
 	}
 	printf(s);
